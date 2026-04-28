@@ -1,26 +1,24 @@
-FROM node:22-bookworm
+FROM node:22-bookworm-slim
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm directly
+RUN npm install -g pnpm@10.4.1
 
 WORKDIR /app
 
-# Copy package files and patches
+# Copy only dependency-related files first
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 
-# Copy project files
+# Install dependencies with verbose output to avoid "hanging" feel
+RUN pnpm install --frozen-lockfile
+
+# Copy the rest of the application
 COPY . .
 
-# Set pnpm configuration to avoid hard-link issues on macOS Docker volumes
-RUN pnpm config set package-import-method copy
-RUN pnpm config set store-dir /app/.pnpm-store
-
-# Install dependencies
-RUN pnpm install
-
-# Expose port (default 3000 as per server/_core/index.ts)
+# Expose port
 EXPOSE 3000
 
 # Start development server
 CMD ["pnpm", "run", "dev"]
+
+
