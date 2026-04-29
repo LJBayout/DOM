@@ -317,6 +317,7 @@ export default function FichaForm() {
                     {attractionFiles.map((file) => (
                       <div key={file.key} style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--ink)", color: "var(--gold)", padding: "0.35rem 0.75rem", borderRadius: "var(--radius-sm)", fontSize: "0.65rem", fontFamily: "var(--font-sans)", fontWeight: 600 }}>
                         <span style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name.toUpperCase()}</span>
+                        <a href={file.url} target="_blank" rel="noreferrer" style={{ color: "var(--gold)", cursor: "pointer", marginLeft: "0.25rem", display: "inline-flex", alignItems: "center" }}><Download size={12} /></a>
                         <button type="button" onClick={() => removeFile(file.key)} style={{ background: "transparent", border: "none", color: "var(--gold)", cursor: "pointer", fontWeight: 800, padding: "0 0 0 0.25rem" }}><X size={12} /></button>
                       </div>
                     ))}
@@ -605,7 +606,28 @@ export default function FichaForm() {
                       <Download size={14} /> {hotels[activeHotelTab].roomListPdfs ? "Alterar Room List" : "Upload Room List (PDF)"}
                     </label>
                     {hotels[activeHotelTab].roomListPdfs && (
-                      <span style={{ color: "var(--gold)", fontSize: "0.65rem", fontWeight: 700 }}>✓ CARREGADO</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <span style={{ color: "var(--gold)", fontSize: "0.65rem", fontWeight: 700 }}>✓ CARREGADO</span>
+                        <a 
+                          href={hotels[activeHotelTab].roomListPdfs} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          style={{ 
+                            background: "var(--ink)", 
+                            color: "var(--gold)", 
+                            padding: "0.4rem 0.8rem", 
+                            borderRadius: "var(--radius-sm)", 
+                            fontSize: "0.65rem", 
+                            fontWeight: 700, 
+                            textDecoration: "none", 
+                            display: "inline-flex", 
+                            alignItems: "center", 
+                            gap: "0.3rem" 
+                          }}
+                        >
+                          <Download size={12} /> ABRIR PDF
+                        </a>
+                      </div>
                     )}
                   </div>
                 </div>

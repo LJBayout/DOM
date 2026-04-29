@@ -4,7 +4,7 @@ import { ENV } from "./env";
 import { getPresignedDownloadUrl } from "../storage";
 
 export function registerStorageProxy(app: Express) {
-  app.get("/storage/*", async (req, res) => {
+  app.get("/api/storage/*", async (req, res) => {
     const key = (req.params as Record<string | number, string>)[0];
     if (!key) {
       res.status(400).send("Missing storage key");
