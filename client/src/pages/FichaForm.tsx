@@ -38,6 +38,7 @@ const DEFAULT_HOTEL: HotelRow = {
 
 const ACTIVITY_SUGGESTIONS = ["Montagem", "Passagem de Som", "Início", "Término", "Intervalo", "Encerramento", "Desmontagem"];
 const ROLE_SUGGESTIONS = ["SOM", "LUZ", "CAMARIM", "GERADOR", "LED", "Carregadores"];
+const LOGISTICS_SUGGESTIONS = ["Responsável Banda", "Responsável Local", "Segurança", "Produtor", "Transporte / Van", "Carregadores"];
 
 export default function FichaForm() {
   const { user, loading: authLoading } = useAuth();
@@ -569,7 +570,10 @@ export default function FichaForm() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
                     <div>
                       <FieldLabel>Cargo / Função</FieldLabel>
-                      <input type="text" value={row.role} onChange={(e) => updateLogisticsRow(i, "role", e.target.value)} placeholder="Ex.: Motorista Van" style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <input type="text" value={row.role} onChange={(e) => updateLogisticsRow(i, "role", e.target.value)} placeholder="Ex.: Motorista Van" list={`logistics-suggestions-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`logistics-suggestions-${i}`}>
+                        {LOGISTICS_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
+                      </datalist>
                     </div>
                     <div>
                       <FieldLabel>Nome</FieldLabel>
