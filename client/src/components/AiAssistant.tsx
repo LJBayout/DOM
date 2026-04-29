@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Bot, Sparkles } from "lucide-react";
+import { Bot, Sparkles, Send, Loader2 } from "lucide-react";
 
-export function AiAssistant() {
+export function AiAssistant({ inline = false }: { inline?: boolean }) {
   const [prompt, setPrompt] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>("");
 
   const utils = trpc.useUtils();
   const modelsQuery = trpc.ficha.listModels.useQuery(undefined, {
-    enabled: isOpen,
+    enabled: isOpen || inline,
   });
 
   const processCommand = trpc.ficha.processAiCommand.useMutation({
@@ -18,7 +18,7 @@ export function AiAssistant() {
       if (data.success) {
         toast.success(`${data.message} (Modelo: ${data.modelUsed})`);
         setPrompt("");
-        setIsOpen(false);
+        if (!inline) setIsOpen(false);
         utils.ficha.list.invalidate(); // Refresh dashboard
       } else {
         toast.error(data.message);
@@ -31,9 +31,99 @@ export function AiAssistant() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || processCommand.isPending) return;
     processCommand.mutate({ prompt, model: selectedModel || undefined });
   };
+
+  if (inline) {
+    return (
+      <div style={{
+        background: "rgba(0,0,0,0.03)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius)",
+        padding: "0.5rem",
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        width: "100%",
+        maxWidth: "600px",
+        transition: "all 0.2s",
+        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)"
+      }}>
+        <div style={{ color: "var(--gold)", display: "flex", alignItems: "center", gap: "0.5rem", paddingLeft: "0.5rem" }}>
+          <Sparkles size={16} />
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
+            DOM AI
+          </span>
+        </div>
+        
+        <div style={{ width: "1px", height: "20px", background: "var(--border)" }} />
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flex: 1, alignItems: "center", gap: "0.5rem" }}>
+          <input
+            type="text"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Pesquisar ou comandar via IA (ex: Publique a Expo...)"
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: "0.5rem",
+              color: "var(--ink)",
+              fontFamily: "var(--font-sans)",
+              fontSize: "0.85rem",
+              flex: 1,
+              outline: "none"
+            }}
+          />
+
+          {modelsQuery.data && modelsQuery.data.length > 0 && (
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--ink-faint)",
+                fontFamily: "var(--font-sans)",
+                fontSize: "0.65rem",
+                outline: "none",
+                cursor: "pointer",
+                maxWidth: "80px"
+              }}
+            >
+              <option value="">Auto</option>
+              {modelsQuery.data.map(model => (
+                <option key={model} value={model}>{model}</option>
+              ))}
+            </select>
+          )}
+
+          <button
+            type="submit"
+            disabled={processCommand.isPending || !prompt.trim()}
+            style={{
+              background: "var(--gold)",
+              color: "var(--ink)",
+              border: "none",
+              width: "32px",
+              height: "32px",
+              borderRadius: "var(--radius-sm)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: processCommand.isPending ? "not-allowed" : "pointer",
+              transition: "transform 0.1s",
+            }}
+            onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")}
+            onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
+            {processCommand.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   if (!isOpen) {
     return (

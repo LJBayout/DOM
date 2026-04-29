@@ -4,6 +4,7 @@ import { CalendarDays, Eye, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { AiAssistant } from "@/components/AiAssistant";
 
 function formatDate(dateStr: string) {
   if (!dateStr) return "—";
@@ -84,9 +85,14 @@ export default function Dashboard() {
               <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "0.4rem", fontWeight: 600 }}>
                 Gestão de Eventos
               </p>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "1.5rem", flexWrap: "wrap" }}>
               <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.75rem, 5vw, 3rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
                 Eventos
               </h1>
+              <div style={{ flex: 1, minWidth: "300px", marginBottom: "0.4rem" }}>
+                <AiAssistant inline />
+              </div>
+            </div>
             </div>
             {isAdmin && (
               <button
