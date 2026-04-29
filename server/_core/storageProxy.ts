@@ -14,17 +14,8 @@ export function registerStorageProxy(app: Express) {
     try {
       const url = await getPresignedDownloadUrl(key);
       
-      // If we are in Docker, the URL contains "http://minio:9000".
-      // We need the browser to reach it. Since we exposed 9000 on the VPS,
-      // we can replace "minio" with the VPS IP/Host.
-      // Or, better, we could proxy the data, but redirect is faster.
-      
-      // For now, let's assume the user accesses via the same host.
-      const host = req.get('host')?.split(':')[0] || 'localhost';
-      const browserUrl = url.replace("minio", host);
-
       res.set("Cache-Control", "no-store");
-      res.redirect(307, browserUrl);
+      res.redirect(307, url);
     } catch (err) {
       console.error("[StorageProxy] failed:", err);
       res.status(502).send("Storage proxy error");
