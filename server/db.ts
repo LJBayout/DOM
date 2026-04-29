@@ -4,10 +4,12 @@ import {
   fichasTecnicas,
   InsertFichaTecnica,
   InsertHotel,
+  InsertLogisticsItem,
   InsertProfessional,
   InsertScheduleItem,
   InsertUser,
   hotels,
+  logistics,
   professionals,
   scheduleItems,
   users,
@@ -98,6 +100,7 @@ export async function deleteFicha(id: number) {
   await db.delete(scheduleItems).where(eq(scheduleItems.fichaId, id));
   await db.delete(professionals).where(eq(professionals.fichaId, id));
   await db.delete(hotels).where(eq(hotels.fichaId, id));
+  await db.delete(logistics).where(eq(logistics.fichaId, id));
   await db.delete(fichasTecnicas).where(eq(fichasTecnicas.id, id));
 }
 
@@ -149,5 +152,22 @@ export async function replaceHotels(fichaId: number, items: Omit<InsertHotel, "f
   await db.delete(hotels).where(eq(hotels.fichaId, fichaId));
   if (items.length > 0) {
     await db.insert(hotels).values(items.map((item, i) => ({ ...item, fichaId, sortOrder: i })));
+  }
+}
+
+// ─── Logistics ──────────────────────────────────────────────────────────────
+
+export async function getLogisticsByFichaId(fichaId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(logistics).where(eq(logistics.fichaId, fichaId)).orderBy(asc(logistics.sortOrder));
+}
+
+export async function replaceLogistics(fichaId: number, items: Omit<InsertLogisticsItem, "fichaId">[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(logistics).where(eq(logistics.fichaId, fichaId));
+  if (items.length > 0) {
+    await db.insert(logistics).values(items.map((item, i) => ({ ...item, fichaId, sortOrder: i })));
   }
 }

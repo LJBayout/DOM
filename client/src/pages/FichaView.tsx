@@ -329,6 +329,34 @@ export default function FichaView() {
         </ViewSection>
       </div>
 
+      {/* ── SECTION 5: Logística ─────────────────────────────────── */}
+      <ViewSection number="05" title="Logística" icon={MapPin}>
+        {(!ficha.logistics || ficha.logistics.length === 0) ? (
+          <p style={{ fontFamily: "var(--font-sans)", color: "var(--ink-light)", fontSize: "0.9rem" }}>
+            Nenhuma informação de logística cadastrada.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+            {ficha.logistics.map((item, i) => (
+              <div key={i} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+                  <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, color: "var(--gold)", letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(var(--gold-rgb), 0.1)", padding: "0.25rem 0.5rem", borderRadius: "4px" }}>
+                    {item.role || "Logística"}
+                  </span>
+                </div>
+                <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.25rem" }}>
+                  {item.name || "—"}
+                </h3>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--ink-light)", fontFamily: "var(--font-sans)", fontSize: "0.85rem" }}>
+                  <ContactRound size={14} />
+                  {item.contact || "—"}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ViewSection>
+
         {/* Footer rule */}
         <div style={{ borderTop: "2px solid var(--ink)", marginTop: "4rem", paddingTop: "2rem", display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center", textAlign: "center" }}>
           <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.25rem", fontWeight: 800, color: "var(--ink)", letterSpacing: "0.05em" }}>

@@ -16,6 +16,7 @@ type HotelRow = {
   gpsLink: string;
   roomListPdfs: string | null;
 };
+type LogisticsRow = { role: string; name: string; contact: string };
 type AttractionFile = { name: string; url: string; key: string };
 
 const DEFAULT_SCHEDULE: ScheduleRow[] = [
@@ -58,6 +59,7 @@ export default function FichaForm() {
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [schedule, setSchedule] = useState<ScheduleRow[]>(DEFAULT_SCHEDULE);
   const [profs, setProfs] = useState<ProfessionalRow[]>([{ name: "", role: "", contact: "" }]);
+  const [logisticsRows, setLogisticsRows] = useState<LogisticsRow[]>([{ role: "", name: "", contact: "" }]);
   
   // Multiple Hotels state
   const [hotels, setHotels] = useState<HotelRow[]>([{ ...DEFAULT_HOTEL }]);
@@ -96,6 +98,7 @@ export default function FichaForm() {
       setStatus(fichaData.status);
       setSchedule(fichaData.scheduleItems.length > 0 ? fichaData.scheduleItems : DEFAULT_SCHEDULE);
       setProfs(fichaData.professionals.length > 0 ? fichaData.professionals : [{ name: "", role: "", contact: "" }]);
+      setLogisticsRows(fichaData.logistics.length > 0 ? fichaData.logistics : [{ role: "", name: "", contact: "" }]);
       
       if (fichaData.hotels && fichaData.hotels.length > 0) {
         setHotels(fichaData.hotels.map(h => ({
@@ -173,6 +176,9 @@ export default function FichaForm() {
           gpsLink: h.gpsLink,
           roomListPdfs: h.roomListPdfs
         })),
+      logistics: logisticsRows
+        .filter((l) => l.name.trim() || l.role.trim() || l.contact.trim())
+        .map((l) => ({ name: l.name, role: l.role, contact: l.contact })),
     };
     if (isEditing) {
       updateMutation.mutate({ id: fichaId!, data: payload });
@@ -192,6 +198,12 @@ export default function FichaForm() {
   };
   const addProfRow = () => setProfs((prev) => [...prev, { name: "", role: "", contact: "" }]);
   const removeProfRow = (i: number) => setProfs((prev) => prev.filter((_, idx) => idx !== i));
+
+  const updateLogisticsRow = (i: number, field: keyof LogisticsRow, val: string) => {
+    setLogisticsRows((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
+  };
+  const addLogisticsRow = () => setLogisticsRows((prev) => [...prev, { role: "", name: "", contact: "" }]);
+  const removeLogisticsRow = (i: number) => setLogisticsRows((prev) => prev.filter((_, idx) => idx !== i));
 
   // Hotel Helpers
   const updateHotelField = (i: number, field: keyof HotelRow, val: string) => {
@@ -546,6 +558,32 @@ export default function FichaForm() {
 
               </div>
             </div>
+          </Section>
+
+          {/* ── SECTION 05: Logística ─────────────────────────────────── */}
+          <Section number="05" title="Logística" subtitle="Transporte e coordenação da equipe" icon={MapPin}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {logisticsRows.map((row, i) => (
+                <div key={i} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.25rem", position: "relative" }}>
+                  <button type="button" onClick={() => removeLogisticsRow(i)} disabled={logisticsRows.length <= 1} style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "transparent", border: "none", color: "var(--destructive)", cursor: "pointer", opacity: logisticsRows.length <= 1 ? 0 : 0.6 }}><X size={16} /></button>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                    <div>
+                      <FieldLabel>Cargo / Função</FieldLabel>
+                      <input type="text" value={row.role} onChange={(e) => updateLogisticsRow(i, "role", e.target.value)} placeholder="Ex.: Motorista Van" style={{ ...inputStyle, padding: "0.6rem" }} />
+                    </div>
+                    <div>
+                      <FieldLabel>Nome</FieldLabel>
+                      <input type="text" value={row.name} onChange={(e) => updateLogisticsRow(i, "name", e.target.value)} placeholder="Nome completo" style={{ ...inputStyle, padding: "0.6rem" }} />
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <FieldLabel>Contato</FieldLabel>
+                      <input type="text" value={row.contact} onChange={(e) => updateLogisticsRow(i, "contact", e.target.value)} placeholder="Telefone ou WhatsApp" style={{ ...inputStyle, padding: "0.6rem" }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <AddRowButton onClick={addLogisticsRow} label="Novo Logística" />
           </Section>
 
           {/* Submit */}

@@ -10,10 +10,12 @@ import {
   deleteFicha,
   getFichaById,
   getHotelsByFichaId,
+  getLogisticsByFichaId,
   getProfessionalsByFichaId,
   getScheduleByFichaId,
   listFichas,
   replaceHotels,
+  replaceLogistics,
   replaceProfessionals,
   replaceScheduleItems,
   upsertUser,
@@ -53,6 +55,12 @@ const hotelSchema = z.object({
   roomListPdfs: z.string().nullable().optional(),
 });
 
+const logisticsSchema = z.object({
+  role: z.string().max(128),
+  name: z.string().max(255),
+  contact: z.string().max(255),
+});
+
 const fichaInputSchema = z.object({
   eventName: z.string().min(1).max(255),
   eventDate: z.string().max(32),
@@ -67,6 +75,7 @@ const fichaInputSchema = z.object({
   scheduleItems: z.array(scheduleItemSchema),
   professionals: z.array(professionalSchema),
   hotels: z.array(hotelSchema).optional().default([]),
+  logistics: z.array(logisticsSchema).optional().default([]),
 });
 
 // ─── Ficha Router ─────────────────────────────────────────────────────────────
@@ -81,12 +90,13 @@ const fichaRouter = router({
     .query(async ({ input }) => {
       const ficha = await getFichaById(input.id);
       if (!ficha) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha Técnica não encontrada." });
-      const [schedule, profs, htls] = await Promise.all([
+      const [schedule, profs, htls, logis] = await Promise.all([
         getScheduleByFichaId(input.id),
         getProfessionalsByFichaId(input.id),
         getHotelsByFichaId(input.id),
+        getLogisticsByFichaId(input.id),
       ]);
-      return { ...ficha, scheduleItems: schedule, professionals: profs, hotels: htls };
+      return { ...ficha, scheduleItems: schedule, professionals: profs, hotels: htls, logistics: logis };
     }),
 
   create: adminProcedure
@@ -109,6 +119,7 @@ const fichaRouter = router({
         replaceScheduleItems(fichaId, input.scheduleItems),
         replaceProfessionals(fichaId, input.professionals),
         replaceHotels(fichaId, input.hotels),
+        replaceLogistics(fichaId, input.logistics),
       ]);
       return { id: fichaId };
     }),
@@ -134,6 +145,7 @@ const fichaRouter = router({
         replaceScheduleItems(input.id, input.data.scheduleItems),
         replaceProfessionals(input.id, input.data.professionals),
         replaceHotels(input.id, input.data.hotels),
+        replaceLogistics(input.id, input.data.logistics),
       ]);
       return { success: true };
     }),

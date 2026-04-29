@@ -96,3 +96,17 @@ export const hotels = mysqlTable("hotels", {
 export type Hotel = typeof hotels.$inferSelect;
 export type InsertHotel = typeof hotels.$inferInsert;
 
+// ─── Logistics ──────────────────────────────────────────────────────────────
+
+export const logistics = mysqlTable("logistics", {
+  id: int("id").autoincrement().primaryKey(),
+  fichaId: int("fichaId").notNull(),
+  role: varchar("role", { length: 128 }).notNull().default(""),
+  name: varchar("name", { length: 255 }).notNull().default(""),
+  contact: varchar("contact", { length: 255 }).notNull().default(""),
+  sortOrder: int("sortOrder").notNull().default(0),
+});
+
+export type LogisticsItem = typeof logistics.$inferSelect;
+export type InsertLogisticsItem = typeof logistics.$inferInsert;
+
