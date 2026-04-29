@@ -7,7 +7,7 @@ services:
       - DATABASE_URL=mysql://root:password@db:3306/ficha_tecnica?charset=utf8mb4
       - NODE_ENV=development
       - JWT_SECRET=${JWT_SECRET:-local-dev-secret-change-me}
-      - S3_ENDPOINT=http://minio:9000
+      - S3_ENDPOINT=http://187.127.19.113:9000
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
       - S3_BUCKET=fichas-tecnicas
