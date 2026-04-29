@@ -511,7 +511,23 @@ export default function FichaForm() {
                   />
                 </div>
                 <div>
-                  <FieldLabel>Link GPS (Google Maps)</FieldLabel>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <FieldLabel>Link GPS (Google Maps)</FieldLabel>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const h = hotels[activeHotelTab];
+                        const query = encodeURIComponent(`${h.name} ${h.address}`);
+                        if (query) {
+                          updateHotelField(activeHotelTab, "gpsLink", `https://www.google.com/maps/search/?api=1&query=${query}`);
+                          toast.success("Link gerado com sucesso!");
+                        }
+                      }}
+                      style={{ background: "transparent", border: "none", color: "var(--gold)", fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      Gerar Link
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={hotels[activeHotelTab].gpsLink}
@@ -520,6 +536,7 @@ export default function FichaForm() {
                     style={inputStyle}
                   />
                 </div>
+
               </div>
             </div>
           </Section>
