@@ -85,7 +85,7 @@ export default function Dashboard() {
                 Gestão de Eventos
               </p>
               <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.75rem, 5vw, 3rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                Fichas Técnicas
+                Eventos
               </h1>
             </div>
             {isAdmin && (
