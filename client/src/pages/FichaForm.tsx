@@ -442,18 +442,25 @@ export default function FichaForm() {
                 type="button"
                 onClick={addHotel}
                 style={{
-                  padding: "0.6rem",
-                  background: "transparent",
+                  padding: "0.6rem 1rem",
+                  background: "rgba(var(--gold-rgb), 0.1)",
                   color: "var(--gold)",
                   border: "1px dashed var(--gold)",
                   borderRadius: "var(--radius-sm)",
+                  fontFamily: "var(--font-sans)",
+                  fontSize: "0.6rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center"
+                  gap: "0.4rem",
+                  transition: "all 0.2s"
                 }}
               >
-                <Plus size={18} />
+                <Plus size={14} />
+                Adicionar
               </button>
             </div>
 

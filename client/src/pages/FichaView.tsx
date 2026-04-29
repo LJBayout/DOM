@@ -237,8 +237,33 @@ export default function FichaView() {
         </ViewSection>
 
         {/* ── SECTION 4: Hospedagem ─────────────────────────────────── */}
-        <ViewSection number="04" title="Hospedagem" icon={Bed}>
-          {(!ficha.hotels || ficha.hotels.length === 0) ? (
+        <div style={{ position: "relative" }}>
+          <ViewSection number="04" title="Hospedagem" icon={Bed}>
+            {isAdmin && (
+              <button
+                onClick={() => navigate(`/ficha/${fichaId}/editar`)}
+                style={{
+                  position: "absolute",
+                  top: "2.5rem",
+                  right: 0,
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--gold)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                  fontFamily: "var(--font-sans)",
+                  fontSize: "0.6rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em"
+                }}
+              >
+                <Plus size={14} /> Adicionar Hotel
+              </button>
+            )}
+            {(!ficha.hotels || ficha.hotels.length === 0) ? (
             <p style={{ fontFamily: "var(--font-sans)", color: "var(--ink-light)", fontSize: "0.9rem" }}>
               Nenhuma hospedagem cadastrada.
             </p>
@@ -302,6 +327,7 @@ export default function FichaView() {
             </div>
           )}
         </ViewSection>
+      </div>
 
         {/* Footer rule */}
         <div style={{ borderTop: "2px solid var(--ink)", marginTop: "4rem", paddingTop: "2rem", display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center", textAlign: "center" }}>
