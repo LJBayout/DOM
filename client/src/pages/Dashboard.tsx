@@ -80,46 +80,48 @@ export default function Dashboard() {
 
         {/* Page header */}
         <div style={{ marginBottom: "2rem" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
-            <div>
-              <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "0.4rem", fontWeight: 600 }}>
-                Gestão de Eventos
-              </p>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "1.5rem", flexWrap: "wrap" }}>
-              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.75rem, 5vw, 3rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                Eventos
-              </h1>
-              <div style={{ flex: 1, minWidth: "300px", marginBottom: "0.4rem" }}>
-                <AiAssistant inline />
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+              <div>
+                <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "0.4rem", fontWeight: 600 }}>
+                  Gestão de Eventos
+                </p>
+                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.75rem, 5vw, 3rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                  Eventos
+                </h1>
               </div>
+              {isAdmin && (
+                <button
+                  onClick={() => navigate("/ficha/nova")}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    background: "var(--gold)",
+                    color: "var(--ink)",
+                    border: "none",
+                    fontFamily: "var(--font-sans)",
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    borderRadius: "var(--radius)",
+                    flexShrink: 0,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <Plus size={14} />
+                  <span className="hidden sm:inline">Nova Ficha</span>
+                  <span className="sm:hidden">Nova</span>
+                </button>
+              )}
             </div>
+            
+            <div style={{ width: "100%", maxWidth: "800px" }}>
+              <AiAssistant inline />
             </div>
-            {isAdmin && (
-              <button
-                onClick={() => navigate("/ficha/nova")}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  background: "var(--gold)",
-                  color: "var(--ink)",
-                  border: "none",
-                  fontFamily: "var(--font-sans)",
-                  fontSize: "0.65rem",
-                  fontWeight: 700,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  borderRadius: "var(--radius)",
-                  flexShrink: 0,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <Plus size={14} />
-                Nova Ficha
-              </button>
-            )}
           </div>
           <div style={{ height: "2px", background: "linear-gradient(90deg, var(--gold) 0%, var(--gold-soft) 100%)", marginTop: "1.25rem", borderRadius: "2px" }} />
         </div>

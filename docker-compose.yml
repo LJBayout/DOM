@@ -77,8 +77,8 @@ services:
     command: >
       -c "
       until ollama list > /dev/null 2>&1; do echo 'Waiting for Ollama...'; sleep 5; done;
-      echo 'Pulling llama3...';
-      ollama pull llama3;
+      echo 'Pulling llama3.2:3b...';
+      ollama pull llama3.2:3b;
       echo 'Creating dom-ai model...';
       ollama create dom-ai -f /app/Modelfile;
       echo 'Ollama initialization complete!';
