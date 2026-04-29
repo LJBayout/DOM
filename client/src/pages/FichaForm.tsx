@@ -1,12 +1,21 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Mail, MapPin, Phone, Plus, Trash2, UserRound, ArrowLeft, Save, X } from "lucide-react";
+import { Mail, MapPin, Phone, Plus, Trash2, UserRound, ArrowLeft, Save, X, Bed } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 
 type ScheduleRow = { time: string; activity: string };
 type ProfessionalRow = { name: string; role: string; contact: string };
+type HotelRow = {
+  name: string;
+  address: string;
+  contact: string;
+  contactPerson: string;
+  localContact: string;
+  gpsLink: string;
+  roomListPdfs: string | null;
+};
 type AttractionFile = { name: string; url: string; key: string };
 
 const DEFAULT_SCHEDULE: ScheduleRow[] = [
@@ -15,6 +24,16 @@ const DEFAULT_SCHEDULE: ScheduleRow[] = [
   { time: "", activity: "Início" },
   { time: "", activity: "Término" },
 ];
+
+const DEFAULT_HOTEL: HotelRow = {
+  name: "",
+  address: "",
+  contact: "",
+  contactPerson: "",
+  localContact: "",
+  gpsLink: "",
+  roomListPdfs: null,
+};
 
 const ACTIVITY_SUGGESTIONS = ["Montagem", "Passagem de Som", "Início", "Término", "Intervalo", "Encerramento", "Desmontagem"];
 const ROLE_SUGGESTIONS = ["SOM", "LUZ", "CAMARIM", "GERADOR", "LED", "Carregadores"];
@@ -36,12 +55,13 @@ export default function FichaForm() {
   const [address, setAddress] = useState("");
   const [localProducerName, setLocalProducerName] = useState("");
   const [localProducerContact, setLocalProducerContact] = useState("");
-  const [hotelName, setHotelName] = useState("");
-  const [hotelAddress, setHotelAddress] = useState("");
-  const [hotelContact, setHotelContact] = useState("");
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [schedule, setSchedule] = useState<ScheduleRow[]>(DEFAULT_SCHEDULE);
   const [profs, setProfs] = useState<ProfessionalRow[]>([{ name: "", role: "", contact: "" }]);
+  
+  // Multiple Hotels state
+  const [hotels, setHotels] = useState<HotelRow[]>([{ ...DEFAULT_HOTEL }]);
+  const [activeHotelTab, setActiveHotelTab] = useState(0);
 
   // Auth guard
   useEffect(() => {
@@ -73,12 +93,36 @@ export default function FichaForm() {
       setAddress(fichaData.address);
       setLocalProducerName(fichaData.localProducerName);
       setLocalProducerContact(fichaData.localProducerContact);
-      setHotelName(fichaData.hotelName || "");
-      setHotelAddress(fichaData.hotelAddress || "");
-      setHotelContact(fichaData.hotelContact || "");
       setStatus(fichaData.status);
       setSchedule(fichaData.scheduleItems.length > 0 ? fichaData.scheduleItems : DEFAULT_SCHEDULE);
       setProfs(fichaData.professionals.length > 0 ? fichaData.professionals : [{ name: "", role: "", contact: "" }]);
+      
+      if (fichaData.hotels && fichaData.hotels.length > 0) {
+        setHotels(fichaData.hotels.map(h => ({
+          name: h.name,
+          address: h.address,
+          contact: h.contact,
+          contactPerson: h.contactPerson,
+          localContact: h.localContact,
+          gpsLink: h.gpsLink,
+          roomListPdfs: h.roomListPdfs
+        })));
+      } else {
+        // Fallback for old data structure if still present in DB fields
+        if (fichaData.hotelName) {
+          setHotels([{
+            name: fichaData.hotelName,
+            address: fichaData.hotelAddress || "",
+            contact: fichaData.hotelContact || "",
+            contactPerson: fichaData.hotelContactPerson || "",
+            localContact: fichaData.hotelLocalContact || "",
+            gpsLink: fichaData.hotelGpsLink || "",
+            roomListPdfs: fichaData.hotelRoomListPdfs || null,
+          }]);
+        } else {
+          setHotels([{ ...DEFAULT_HOTEL }]);
+        }
+      }
     }
   }, [fichaData]);
 
@@ -113,14 +157,22 @@ export default function FichaForm() {
       address,
       localProducerName,
       localProducerContact,
-      hotelName,
-      hotelAddress,
-      hotelContact,
       status,
       scheduleItems: schedule.map((r) => ({ time: r.time, activity: r.activity })),
       professionals: profs
         .filter((p) => p.name.trim() || p.role.trim() || p.contact.trim())
         .map((p) => ({ name: p.name, role: p.role, contact: p.contact })),
+      hotels: hotels
+        .filter(h => h.name.trim())
+        .map(h => ({
+          name: h.name,
+          address: h.address,
+          contact: h.contact,
+          contactPerson: h.contactPerson,
+          localContact: h.localContact,
+          gpsLink: h.gpsLink,
+          roomListPdfs: h.roomListPdfs
+        })),
     };
     if (isEditing) {
       updateMutation.mutate({ id: fichaId!, data: payload });
@@ -140,6 +192,20 @@ export default function FichaForm() {
   };
   const addProfRow = () => setProfs((prev) => [...prev, { name: "", role: "", contact: "" }]);
   const removeProfRow = (i: number) => setProfs((prev) => prev.filter((_, idx) => idx !== i));
+
+  // Hotel Helpers
+  const updateHotelField = (i: number, field: keyof HotelRow, val: string) => {
+    setHotels(prev => prev.map((h, idx) => idx === i ? { ...h, [field]: val } : h));
+  };
+  const addHotel = () => {
+    setHotels(prev => [...prev, { ...DEFAULT_HOTEL }]);
+    setActiveHotelTab(hotels.length);
+  };
+  const removeHotel = (i: number) => {
+    if (hotels.length <= 1) return;
+    setHotels(prev => prev.filter((_, idx) => idx !== i));
+    if (activeHotelTab >= i && activeHotelTab > 0) setActiveHotelTab(activeHotelTab - 1);
+  };
  
   const getUploadUrlMutation = trpc.storage.getUploadUrl.useMutation();
  
@@ -220,33 +286,15 @@ export default function FichaForm() {
           </div>
 
           {/* ── SECTION 1: Identificação ─────────────────────────────────── */}
-          <Section
-            number="01"
-            title="Identificação"
-            subtitle="Dados básicos do evento"
-            icon={MapPin}
-          >
+          <Section number="01" title="Identificação" subtitle="Dados básicos do evento" icon={MapPin}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.25rem" }}>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Nome do Evento</FieldLabel>
-                <input
-                  type="text"
-                  value={eventName}
-                  onChange={(e) => setEventName(e.target.value)}
-                  placeholder="Ex.: Festival DOM 2024"
-                  required
-                  style={inputStyle}
-                />
+                <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Ex.: Festival DOM 2024" required style={inputStyle} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Atração Principal</FieldLabel>
-                <input
-                  type="text"
-                  value={attraction}
-                  onChange={(e) => setAttraction(e.target.value)}
-                  placeholder="Ex.: Artista ou Banda Principal"
-                  style={inputStyle}
-                />
+                <input type="text" value={attraction} onChange={(e) => setAttraction(e.target.value)} placeholder="Ex.: Artista ou Banda Principal" style={inputStyle} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Riders e Mapas (PDF)</FieldLabel>
@@ -258,13 +306,10 @@ export default function FichaForm() {
                         <button type="button" onClick={() => removeFile(file.key)} style={{ background: "transparent", border: "none", color: "var(--gold)", cursor: "pointer", fontWeight: 800, padding: "0 0 0 0.25rem" }}><X size={12} /></button>
                       </div>
                     ))}
-                    {attractionFiles.length === 0 && (
-                      <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.7rem", color: "var(--ink-faint)", fontStyle: "italic" }}>Nenhum arquivo enviado.</span>
-                    )}
+                    {attractionFiles.length === 0 && <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.7rem", color: "var(--ink-faint)", fontStyle: "italic" }}>Nenhum arquivo enviado.</span>}
                   </div>
                   <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", color: "var(--gold)", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                    <Plus size={14} />
-                    Enviar PDF
+                    <Plus size={14} /> Enviar PDF
                     <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ display: "none" }} />
                   </label>
                 </div>
@@ -304,18 +349,12 @@ export default function FichaForm() {
           </Section>
 
           {/* ── SECTION 2: Cronograma ─────────────────────────── */}
-          <Section
-            number="02"
-            title="Cronograma"
-            subtitle="Linha do tempo do evento"
-            icon={Plus}
-          >
+          <Section number="02" title="Cronograma" subtitle="Linha do tempo do evento" icon={Plus}>
             <div className="hidden sm:grid" style={{ gridTemplateColumns: "100px 1fr 40px", gap: "1rem", paddingBottom: "0.5rem", borderBottom: "1px solid var(--ink)", marginBottom: "1rem" }}>
               <span style={colHeaderStyle}>Horário</span>
               <span style={colHeaderStyle}>Atividade</span>
               <span />
             </div>
-
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               {schedule.map((row, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "clamp(80px, 20vw, 100px) 1fr clamp(30px, 10vw, 40px)", gap: "0.5rem 1rem", alignItems: "center" }}>
@@ -328,17 +367,11 @@ export default function FichaForm() {
                 </div>
               ))}
             </div>
-
             <AddRowButton onClick={addScheduleRow} label="Novo Horário" />
           </Section>
 
           {/* ── SECTION 3: Profissionais ─────────────────────────────────── */}
-          <Section
-            number="03"
-            title="Profissionais"
-            subtitle="Equipe e contatos diretos"
-            icon={UserRound}
-          >
+          <Section number="03" title="Profissionais" subtitle="Equipe e contatos diretos" icon={UserRound}>
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {profs.map((row, i) => (
                 <div key={i} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.25rem", position: "relative" }}>
@@ -363,47 +396,130 @@ export default function FichaForm() {
                 </div>
               ))}
             </div>
-
             <AddRowButton onClick={addProfRow} label="Novo Profissional" />
           </Section>
 
-          {/* ── SECTION 04: Hospedagem ─────────────────────────────────── */}
-          <Section
-            number="04"
-            title="Hospedagem"
-            subtitle="Informações de hotel e acomodação"
-            icon={MapPin}
-          >
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.25rem" }}>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <FieldLabel>Nome do Hotel</FieldLabel>
-                <input
-                  type="text"
-                  value={hotelName}
-                  onChange={(e) => setHotelName(e.target.value)}
-                  placeholder="Ex.: Grand Hyatt Rio"
-                  style={inputStyle}
-                />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <FieldLabel>Endereço do Hotel</FieldLabel>
-                <input
-                  type="text"
-                  value={hotelAddress}
-                  onChange={(e) => setHotelAddress(e.target.value)}
-                  placeholder="Endereço completo para a van/logística"
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <FieldLabel>Contato do Hotel / Recepção</FieldLabel>
-                <input
-                  type="text"
-                  value={hotelContact}
-                  onChange={(e) => setHotelContact(e.target.value)}
-                  placeholder="Telefone ou e-mail"
-                  style={inputStyle}
-                />
+          {/* ── SECTION 04: Hospedagem (Multi-tab) ─────────────────────────────────── */}
+          <Section number="04" title="Hospedagem" subtitle="Informações de hotel e acomodação" icon={Bed}>
+            {/* Tabs Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem", overflowX: "auto", paddingBottom: "0.5rem" }}>
+              {hotels.map((h, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActiveHotelTab(i)}
+                  style={{
+                    padding: "0.6rem 1.25rem",
+                    background: activeHotelTab === i ? "var(--ink)" : "var(--card)",
+                    color: activeHotelTab === i ? "var(--gold)" : "var(--ink-light)",
+                    border: "1px solid " + (activeHotelTab === i ? "var(--ink)" : "var(--border)"),
+                    borderRadius: "var(--radius-sm)",
+                    fontFamily: "var(--font-sans)",
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    transition: "all 0.2s",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  <Bed size={14} />
+                  {h.name || `Hotel ${i + 1}`}
+                  {hotels.length > 1 && (
+                    <X
+                      size={14}
+                      onClick={(e) => { e.stopPropagation(); removeHotel(i); }}
+                      style={{ marginLeft: "0.5rem", opacity: 0.6 }}
+                    />
+                  )}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={addHotel}
+                style={{
+                  padding: "0.6rem",
+                  background: "transparent",
+                  color: "var(--gold)",
+                  border: "1px dashed var(--gold)",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+
+            {/* Active Tab Content */}
+            <div style={{ background: "rgba(var(--gold-rgb), 0.02)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.25rem" }}>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <FieldLabel>Nome do Hotel</FieldLabel>
+                  <input
+                    type="text"
+                    value={hotels[activeHotelTab].name}
+                    onChange={(e) => updateHotelField(activeHotelTab, "name", e.target.value)}
+                    placeholder="Ex.: Grand Hyatt Rio"
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <FieldLabel>Endereço do Hotel</FieldLabel>
+                  <input
+                    type="text"
+                    value={hotels[activeHotelTab].address}
+                    onChange={(e) => updateHotelField(activeHotelTab, "address", e.target.value)}
+                    placeholder="Endereço completo para a van/logística"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Contato do Hotel / Recepção</FieldLabel>
+                  <input
+                    type="text"
+                    value={hotels[activeHotelTab].contact}
+                    onChange={(e) => updateHotelField(activeHotelTab, "contact", e.target.value)}
+                    placeholder="Telefone ou e-mail"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Pessoa de Contato</FieldLabel>
+                  <input
+                    type="text"
+                    value={hotels[activeHotelTab].contactPerson}
+                    onChange={(e) => updateHotelField(activeHotelTab, "contactPerson", e.target.value)}
+                    placeholder="Nome do gerente ou reserva"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Contato Direto / WhatsApp</FieldLabel>
+                  <input
+                    type="text"
+                    value={hotels[activeHotelTab].localContact}
+                    onChange={(e) => updateHotelField(activeHotelTab, "localContact", e.target.value)}
+                    placeholder="Celular do contato"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Link GPS (Google Maps)</FieldLabel>
+                  <input
+                    type="text"
+                    value={hotels[activeHotelTab].gpsLink}
+                    onChange={(e) => updateHotelField(activeHotelTab, "gpsLink", e.target.value)}
+                    placeholder="https://maps.app.goo.gl/..."
+                    style={inputStyle}
+                  />
+                </div>
               </div>
             </div>
           </Section>

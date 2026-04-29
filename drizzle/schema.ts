@@ -77,3 +77,22 @@ export const professionals = mysqlTable("professionals", {
 
 export type Professional = typeof professionals.$inferSelect;
 export type InsertProfessional = typeof professionals.$inferInsert;
+
+// ─── Hotels ───────────────────────────────────────────────────────────────────
+
+export const hotels = mysqlTable("hotels", {
+  id: int("id").autoincrement().primaryKey(),
+  fichaId: int("fichaId").notNull(),
+  name: varchar("name", { length: 255 }).notNull().default(""),
+  address: text("address").notNull().default(""),
+  contact: varchar("contact", { length: 255 }).notNull().default(""),
+  contactPerson: varchar("contactPerson", { length: 255 }).notNull().default(""),
+  localContact: varchar("localContact", { length: 255 }).notNull().default(""),
+  gpsLink: text("gpsLink").notNull().default(""),
+  roomListPdfs: text("roomListPdfs"), // Store as JSON string or comma-separated
+  sortOrder: int("sortOrder").notNull().default(0),
+});
+
+export type Hotel = typeof hotels.$inferSelect;
+export type InsertHotel = typeof hotels.$inferInsert;
+

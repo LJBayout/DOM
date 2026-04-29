@@ -9,9 +9,11 @@ import {
   createFicha,
   deleteFicha,
   getFichaById,
+  getHotelsByFichaId,
   getProfessionalsByFichaId,
   getScheduleByFichaId,
   listFichas,
+  replaceHotels,
   replaceProfessionals,
   replaceScheduleItems,
   upsertUser,
@@ -41,6 +43,16 @@ const professionalSchema = z.object({
   contact: z.string().max(255),
 });
 
+const hotelSchema = z.object({
+  name: z.string().max(255),
+  address: z.string(),
+  contact: z.string().max(255),
+  contactPerson: z.string().max(255),
+  localContact: z.string().max(255),
+  gpsLink: z.string(),
+  roomListPdfs: z.string().nullable().optional(),
+});
+
 const fichaInputSchema = z.object({
   eventName: z.string().min(1).max(255),
   eventDate: z.string().max(32),
@@ -51,12 +63,10 @@ const fichaInputSchema = z.object({
   address: z.string().optional().default(""),
   localProducerName: z.string().max(255).optional().default(""),
   localProducerContact: z.string().max(255).optional().default(""),
-  hotelName: z.string().max(255).optional().default(""),
-  hotelAddress: z.string().optional().default(""),
-  hotelContact: z.string().max(255).optional().default(""),
   status: z.enum(["draft", "published"]).optional().default("draft"),
   scheduleItems: z.array(scheduleItemSchema),
   professionals: z.array(professionalSchema),
+  hotels: z.array(hotelSchema).optional().default([]),
 });
 
 // ─── Ficha Router ─────────────────────────────────────────────────────────────
@@ -71,11 +81,12 @@ const fichaRouter = router({
     .query(async ({ input }) => {
       const ficha = await getFichaById(input.id);
       if (!ficha) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha Técnica não encontrada." });
-      const [schedule, profs] = await Promise.all([
+      const [schedule, profs, htls] = await Promise.all([
         getScheduleByFichaId(input.id),
         getProfessionalsByFichaId(input.id),
+        getHotelsByFichaId(input.id),
       ]);
-      return { ...ficha, scheduleItems: schedule, professionals: profs };
+      return { ...ficha, scheduleItems: schedule, professionals: profs, hotels: htls };
     }),
 
   create: adminProcedure
@@ -91,14 +102,14 @@ const fichaRouter = router({
         address: input.address,
         localProducerName: input.localProducerName,
         localProducerContact: input.localProducerContact,
-        hotelName: input.hotelName,
-        hotelAddress: input.hotelAddress,
-        hotelContact: input.hotelContact,
         status: input.status,
         createdByOpenId: ctx.user.openId,
       });
-      await replaceScheduleItems(fichaId, input.scheduleItems);
-      await replaceProfessionals(fichaId, input.professionals);
+      await Promise.all([
+        replaceScheduleItems(fichaId, input.scheduleItems),
+        replaceProfessionals(fichaId, input.professionals),
+        replaceHotels(fichaId, input.hotels),
+      ]);
       return { id: fichaId };
     }),
 
@@ -117,13 +128,13 @@ const fichaRouter = router({
         address: input.data.address,
         localProducerName: input.data.localProducerName,
         localProducerContact: input.data.localProducerContact,
-        hotelName: input.data.hotelName,
-        hotelAddress: input.data.hotelAddress,
-        hotelContact: input.data.hotelContact,
         status: input.data.status,
       });
-      await replaceScheduleItems(input.id, input.data.scheduleItems);
-      await replaceProfessionals(input.id, input.data.professionals);
+      await Promise.all([
+        replaceScheduleItems(input.id, input.data.scheduleItems),
+        replaceProfessionals(input.id, input.data.professionals),
+        replaceHotels(input.id, input.data.hotels),
+      ]);
       return { success: true };
     }),
 

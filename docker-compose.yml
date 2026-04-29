@@ -7,6 +7,9 @@ services:
       - DATABASE_URL=mysql://root:password@db:3306/ficha_tecnica?charset=utf8mb4
       - NODE_ENV=development
       - JWT_SECRET=${JWT_SECRET:-local-dev-secret-change-me}
+    volumes:
+      - .:/app
+      - /app/node_modules
     depends_on:
       db:
         condition: service_healthy

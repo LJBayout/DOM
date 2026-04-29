@@ -3,9 +3,11 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   fichasTecnicas,
   InsertFichaTecnica,
+  InsertHotel,
   InsertProfessional,
   InsertScheduleItem,
   InsertUser,
+  hotels,
   professionals,
   scheduleItems,
   users,
@@ -95,6 +97,7 @@ export async function deleteFicha(id: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(scheduleItems).where(eq(scheduleItems.fichaId, id));
   await db.delete(professionals).where(eq(professionals.fichaId, id));
+  await db.delete(hotels).where(eq(hotels.fichaId, id));
   await db.delete(fichasTecnicas).where(eq(fichasTecnicas.id, id));
 }
 
@@ -129,5 +132,22 @@ export async function replaceProfessionals(fichaId: number, items: Omit<InsertPr
   await db.delete(professionals).where(eq(professionals.fichaId, fichaId));
   if (items.length > 0) {
     await db.insert(professionals).values(items.map((item, i) => ({ ...item, fichaId, sortOrder: i })));
+  }
+}
+
+// ─── Hotels ───────────────────────────────────────────────────────────────────
+
+export async function getHotelsByFichaId(fichaId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(hotels).where(eq(hotels.fichaId, fichaId)).orderBy(asc(hotels.sortOrder));
+}
+
+export async function replaceHotels(fichaId: number, items: Omit<InsertHotel, "fichaId">[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(hotels).where(eq(hotels.fichaId, fichaId));
+  if (items.length > 0) {
+    await db.insert(hotels).values(items.map((item, i) => ({ ...item, fichaId, sortOrder: i })));
   }
 }

@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, ContactRound, MapPin, UserRound, ArrowLeft, Pencil } from "lucide-react";
+import { CalendarDays, ContactRound, MapPin, UserRound, ArrowLeft, Pencil, Bed, Navigation } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 
@@ -237,12 +237,70 @@ export default function FichaView() {
         </ViewSection>
 
         {/* ── SECTION 4: Hospedagem ─────────────────────────────────── */}
-        <ViewSection number="04" title="Hospedagem" icon={MapPin}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem 2rem" }}>
-            <ViewField label="Nome do Hotel" value={ficha.hotelName || "—"} wide />
-            <ViewField label="Endereço do Hotel" value={ficha.hotelAddress || "—"} wide />
-            <ViewField label="Contato / Recepção" value={ficha.hotelContact || "—"} />
-          </div>
+        <ViewSection number="04" title="Hospedagem" icon={Bed}>
+          {(!ficha.hotels || ficha.hotels.length === 0) ? (
+            <p style={{ fontFamily: "var(--font-sans)", color: "var(--ink-light)", fontSize: "0.9rem" }}>
+              Nenhuma hospedagem cadastrada.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+              {ficha.hotels.map((hotel, i) => (
+                <div
+                  key={hotel.id}
+                  style={{
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius)",
+                    padding: "1.5rem",
+                    position: "relative",
+                    overflow: "hidden"
+                  }}
+                >
+                  <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: "var(--gold)" }} />
+                  
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
+                    <div>
+                      <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.25rem" }}>
+                        {hotel.name || `Hotel ${i + 1}`}
+                      </h3>
+                      <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.8rem", color: "var(--ink-mid)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <MapPin size={14} /> {hotel.address || "—"}
+                      </p>
+                    </div>
+                    {hotel.gpsLink && (
+                      <a
+                        href={hotel.gpsLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.4rem",
+                          padding: "0.5rem 1rem",
+                          background: "var(--ink)",
+                          color: "var(--gold)",
+                          fontFamily: "var(--font-sans)",
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          textDecoration: "none",
+                          borderRadius: "var(--radius-sm)"
+                        }}
+                      >
+                        <Navigation size={14} /> GPS
+                      </a>
+                    )}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem" }}>
+                    <ViewField label="Recepção / Geral" value={hotel.contact || "—"} />
+                    <ViewField label="Pessoa de Contato" value={hotel.contactPerson || "—"} />
+                    <ViewField label="Contato Local / WhatsApp" value={hotel.localContact || "—"} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </ViewSection>
 
         {/* Footer rule */}
