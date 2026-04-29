@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { KeyRound, ShieldCheck } from "lucide-react";
+import { KeyRound, ShieldCheck, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -159,6 +159,15 @@ export default function Login() {
                 </p>
               )}
             </form>
+
+            <div style={{ marginTop: "2rem", textAlign: "center" }}>
+              <button
+                onClick={() => navigate("/instalar")}
+                style={{ background: "transparent", border: "none", color: "var(--gold)", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", cursor: "pointer", textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                <Smartphone size={14} /> Como instalar este App no seu celular?
+              </button>
+            </div>
 
             <p style={{ marginTop: "3rem", fontFamily: "var(--font-sans)", fontSize: "0.7rem", color: "var(--ink-faint)", textAlign: "center", lineHeight: 1.6 }}>
               Sistema de uso exclusivo da <strong>DOM Produções</strong>.<br />
