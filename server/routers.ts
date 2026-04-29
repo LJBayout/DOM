@@ -21,7 +21,7 @@ import {
   upsertUser,
   updateFicha,
 } from "./db";
-import { storageGetPresignedPutUrl } from "./storage";
+import { getPresignedUploadUrl } from "./storage";
 
 // ─── Admin Middleware ─────────────────────────────────────────────────────────
 
@@ -166,7 +166,7 @@ const fichaRouter = router({
    getUploadUrl: adminProcedure
      .input(z.object({ filename: z.string(), contentType: z.string() }))
      .mutation(async ({ input }) => {
-       const { url, key, publicUrl } = await storageGetPresignedPutUrl(input.filename, input.contentType);
+       const { url, key, publicUrl } = await getPresignedUploadUrl(input.filename, input.contentType);
        return { url, key, publicUrl };
      }),
  });
