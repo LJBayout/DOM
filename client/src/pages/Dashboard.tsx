@@ -136,49 +136,8 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Desktop table — hidden on mobile */}
-            <div className="hidden md:block">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 200px 180px", gap: "0.75rem", padding: "0 0 0.75rem", borderBottom: "1px solid var(--ink)" }}>
-                {["Evento", "Data", "Local", "Ações"].map((col) => (
-                  <span key={col} style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--ink-light)", fontWeight: 600 }}>
-                    {col}
-                  </span>
-                ))}
-              </div>
-              {fichas.map((ficha) => (
-                <div
-                  key={ficha.id}
-                  style={{ display: "grid", gridTemplateColumns: "1fr 160px 200px 180px", gap: "0.75rem", padding: "1.1rem 0", borderBottom: "1px solid var(--rule)", alignItems: "center" }}
-                >
-                  <div>
-                    <p style={{ fontFamily: "var(--font-serif)", fontSize: "1rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.25rem" }}>
-                      {ficha.eventName}
-                    </p>
-                    <StatusBadge status={ficha.status} />
-                  </div>
-                  <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.8rem", color: "var(--ink-mid)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                    <CalendarDays size={13} color="var(--gold)" />
-                    {formatDate(ficha.eventDate)}
-                  </span>
-                  <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.8rem", color: "var(--ink-mid)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                    <MapPin size={13} color="var(--gold)" />
-                    {ficha.location || "—"}
-                  </span>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <ActionBtn onClick={() => navigate(`/ficha/${ficha.id}`)} icon={Eye} label="Ver" />
-                    {isAdmin && (
-                      <>
-                        <ActionBtn onClick={() => navigate(`/ficha/${ficha.id}/editar`)} icon={Pencil} label="Editar" />
-                        <ActionBtn onClick={() => handleDelete(ficha.id, ficha.eventName)} icon={Trash2} label="Excluir" danger disabled={deleteMutation.isPending} />
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Mobile cards */}
-            <div className="md:hidden" style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+            {/* Responsive Cards (Mobile & Desktop) */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
               {fichas.map((ficha) => (
                 <div
                   key={ficha.id}
@@ -186,27 +145,32 @@ export default function Dashboard() {
                     background: "var(--card)",
                     border: "1px solid var(--border)",
                     borderRadius: "var(--radius)",
-                    padding: "1.1rem",
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                    padding: "1.25rem",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between"
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.6rem" }}>
-                    <p style={{ fontFamily: "var(--font-serif)", fontSize: "1rem", fontWeight: 700, color: "var(--ink)", flex: 1, paddingRight: "0.5rem" }}>
-                      {ficha.eventName}
-                    </p>
-                    <StatusBadge status={ficha.status} />
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                      <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)", paddingRight: "0.5rem" }}>
+                        {ficha.eventName}
+                      </p>
+                      <StatusBadge status={ficha.status} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                      <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", color: "var(--ink-mid)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <CalendarDays size={14} color="var(--gold)" />
+                        {formatDate(ficha.eventDate)}
+                      </span>
+                      <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", color: "var(--ink-mid)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <MapPin size={14} color="var(--gold)" />
+                        {ficha.location || "—"}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "1rem" }}>
-                    <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.78rem", color: "var(--ink-mid)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                      <CalendarDays size={13} color="var(--gold)" />
-                      {formatDate(ficha.eventDate)}
-                    </span>
-                    <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.78rem", color: "var(--ink-mid)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                      <MapPin size={13} color="var(--gold)" />
-                      {ficha.location || "—"}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
                     <ActionBtn onClick={() => navigate(`/ficha/${ficha.id}`)} icon={Eye} label="Ver" />
                     {isAdmin && (
                       <>

@@ -2,14 +2,10 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
-      - DATABASE_URL=mysql://root:password@db:3306/ficha_tecnica
+      - DATABASE_URL=mysql://root:password@db:3306/ficha_tecnica?charset=utf8mb4
       - NODE_ENV=development
-      # OAuth – replace with real values from your Manus project
-      - VITE_OAUTH_PORTAL_URL=${VITE_OAUTH_PORTAL_URL:-}
-      - VITE_APP_ID=${VITE_APP_ID:-}
-      - OAUTH_SERVER_URL=${OAUTH_SERVER_URL:-}
       - JWT_SECRET=${JWT_SECRET:-local-dev-secret-change-me}
     depends_on:
       db:
@@ -33,7 +29,7 @@ services:
   phpmyadmin:
     image: phpmyadmin:latest
     ports:
-      - "8080:80"
+      - "8082:80"
     environment:
       - PMA_ARBITRARY=1
       - PMA_HOST=db
