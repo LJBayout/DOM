@@ -71,6 +71,8 @@ services:
 
   ollama-init:
     image: ollama/ollama:latest
+    environment:
+      - OLLAMA_HOST=ollama:11434
     volumes:
       - .:/app
     entrypoint: /bin/sh
