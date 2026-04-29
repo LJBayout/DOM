@@ -42,19 +42,20 @@ async function startServer() {
     app.get("/debug/db", async (_req, res) => {
       try {
         const { getDb } = await import("../db");
-        const { users, fichasTecnicas, professionals, scheduleItems, hotels: hotelsTable } = await import("../../drizzle/schema");
+        const { users, fichasTecnicas, professionals, scheduleItems, hotels: hotelsTable, logistics: logisticsTable } = await import("../../drizzle/schema");
         const db = await getDb();
         if (!db) return res.status(500).json({ error: "Database not connected" });
 
-        const [u, f, p, s, h] = await Promise.all([
+        const [u, f, p, s, h, l] = await Promise.all([
           db.select().from(users),
           db.select().from(fichasTecnicas),
           db.select().from(professionals),
           db.select().from(scheduleItems),
           db.select().from(hotelsTable),
+          db.select().from(logisticsTable),
         ]);
 
-        res.json({ users: u, fichas: f, professionals: p, schedule: s, hotels: h });
+        res.json({ users: u, fichas: f, professionals: p, schedule: s, hotels: h, logistics: l });
       } catch (err) {
         res.status(500).json({ error: (err as Error).message });
       }

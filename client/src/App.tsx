@@ -9,6 +9,7 @@ import FichaForm from "./pages/FichaForm";
 import FichaView from "./pages/FichaView";
 import Login from "./pages/Login";
 import InstallGuide from "./pages/InstallGuide";
+import { AiAssistant } from "./components/AiAssistant";
 
 function Router() {
   return (
@@ -33,6 +34,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <AiAssistant />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

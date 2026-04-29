@@ -167,6 +167,18 @@ const fichaRouter = router({
     .query(async () => {
       return await getProducerSuggestions();
     }),
+
+  processAiCommand: adminProcedure
+    .input(z.object({ prompt: z.string(), model: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const { processAiCommand } = await import("./ai");
+      return await processAiCommand(input.prompt, input.model);
+    }),
+
+  listModels: adminProcedure.query(async () => {
+    const { listOllamaModels } = await import("./ai");
+    return await listOllamaModels();
+  }),
 });
  
  // ─── Storage Router ───────────────────────────────────────────────────────────
