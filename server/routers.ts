@@ -22,6 +22,7 @@ import {
   updateFicha,
 } from "./db";
 import { getPresignedUploadUrl } from "./storage";
+import { saveProducerSuggestion, getProducerSuggestions } from "./redis";
 
 // ─── Admin Middleware ─────────────────────────────────────────────────────────
 
@@ -147,6 +148,9 @@ const fichaRouter = router({
         replaceHotels(input.id, input.data.hotels),
         replaceLogistics(input.id, input.data.logistics),
       ]);
+      if (input.data.localProducerName || input.data.localProducerContact) {
+        await saveProducerSuggestion(input.data.localProducerName || "", input.data.localProducerContact || "");
+      }
       return { success: true };
     }),
 
@@ -157,6 +161,11 @@ const fichaRouter = router({
       if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha Técnica não encontrada." });
       await deleteFicha(input.id);
       return { success: true };
+    }),
+
+  getProducerSuggestions: adminProcedure
+    .query(async () => {
+      return await getProducerSuggestions();
     }),
 });
  

@@ -9,4 +9,5 @@ export const ENV = {
   s3AccessKey: process.env.S3_ACCESS_KEY ?? "minioadmin",
   s3SecretKey: process.env.S3_SECRET_KEY ?? "minioadmin",
   s3Bucket: process.env.S3_BUCKET ?? "fichas-tecnicas",
+  redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
 };

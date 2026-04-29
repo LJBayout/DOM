@@ -148,6 +148,8 @@ export default function FichaForm() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  const { data: producerSuggestions } = trpc.ficha.getProducerSuggestions.useQuery();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventName.trim()) { toast.error("Nome do evento é obrigatório."); return; }
@@ -352,11 +354,17 @@ export default function FichaForm() {
               </div>
               <div>
                 <FieldLabel>Produtor Responsável</FieldLabel>
-                <input type="text" value={localProducerName} onChange={(e) => setLocalProducerName(e.target.value)} placeholder="Nome do produtor" style={inputStyle} />
+                <input type="text" value={localProducerName} onChange={(e) => setLocalProducerName(e.target.value)} placeholder="Nome do produtor" list="producer-names" style={inputStyle} />
+                <datalist id="producer-names">
+                  {producerSuggestions?.names?.map((n) => <option key={n} value={n} />)}
+                </datalist>
               </div>
               <div>
                 <FieldLabel>Contato Produção</FieldLabel>
-                <input type="text" value={localProducerContact} onChange={(e) => setLocalProducerContact(e.target.value)} placeholder="Telefone ou e-mail" style={inputStyle} />
+                <input type="text" value={localProducerContact} onChange={(e) => setLocalProducerContact(e.target.value)} placeholder="Telefone ou e-mail" list="producer-contacts" style={inputStyle} />
+                <datalist id="producer-contacts">
+                  {producerSuggestions?.contacts?.map((c) => <option key={c} value={c} />)}
+                </datalist>
               </div>
             </div>
           </Section>
