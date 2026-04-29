@@ -3,8 +3,10 @@ import { trpc } from "@/lib/trpc";
 import { KeyRound, ShieldCheck, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { usePWAInstall } from "@/_core/hooks/usePWAInstall";
 
 export default function Login() {
+  const { isInstallable, installPWA } = usePWAInstall();
   const { user, loading } = useAuth();
   const [, navigate] = useLocation();
   const [username, setUsername] = useState("admin");
@@ -160,12 +162,37 @@ export default function Login() {
               )}
             </form>
 
-            <div style={{ marginTop: "2rem", textAlign: "center" }}>
+            <div style={{ marginTop: "2.5rem", textAlign: "center", display: "flex", flexDirection: "column", gap: "1rem", alignItems: "center" }}>
               <button
-                onClick={() => navigate("/instalar")}
-                style={{ background: "transparent", border: "none", color: "var(--gold)", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", cursor: "pointer", textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+                type="button"
+                onClick={async () => {
+                  if (isInstallable) {
+                    await installPWA();
+                  } else {
+                    navigate("/instalar");
+                  }
+                }}
+                style={{ 
+                  background: "rgba(255,255,255,0.05)", 
+                  border: "1px solid var(--rule)", 
+                  color: "var(--gold)", 
+                  fontFamily: "var(--font-sans)", 
+                  fontSize: "0.7rem", 
+                  fontWeight: 700, 
+                  textTransform: "uppercase", 
+                  letterSpacing: "0.1em", 
+                  cursor: "pointer", 
+                  padding: "0.75rem 1.5rem",
+                  borderRadius: "var(--radius)",
+                  display: "inline-flex", 
+                  alignItems: "center", 
+                  gap: "0.5rem",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  transition: "all 0.2s ease"
+                }}
               >
-                <Smartphone size={14} /> Como instalar este App no seu celular?
+                <Smartphone size={16} /> 
+                {isInstallable ? "Instalar App da DOM" : "Como instalar o App (iOS/Android)?"}
               </button>
             </div>
 
