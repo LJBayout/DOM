@@ -68,71 +68,120 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
 
   if (inline) {
     return (
-      <div className="relative w-full max-w-2xl mx-auto">
+      <div className="relative w-full max-w-2xl mx-auto my-4">
         <div style={{
-          background: "rgba(255, 255, 255, 0.03)",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(255, 215, 0, 0.2)",
-          borderRadius: "16px",
-          padding: "12px",
+          background: "rgba(10, 10, 10, 0.6)",
+          backdropFilter: "blur(12px)",
+          border: "1px solid rgba(255, 215, 0, 0.4)",
+          borderRadius: "20px",
+          padding: "8px 12px",
           display: "flex",
           alignItems: "center",
           gap: "12px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-        }}>
-          <div style={{ color: "var(--gold)", display: "flex", alignItems: "center", gap: "8px", paddingLeft: "8px" }}>
-            <Sparkles size={18} className="animate-pulse" />
+          boxShadow: "0 10px 30px rgba(0,0,0,0.3), 0 0 20px rgba(255,215,0,0.1)",
+          transition: "all 0.3s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = "rgba(255, 215, 0, 0.8)";
+          e.currentTarget.style.boxShadow = "0 10px 40px rgba(0,0,0,0.4), 0 0 30px rgba(255,215,0,0.2)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = "rgba(255, 215, 0, 0.4)";
+          e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.3), 0 0 20px rgba(255,215,0,0.1)";
+        }}
+        >
+          <div style={{ 
+            background: "linear-gradient(135deg, #FFD700 0%, #B8860B 100%)",
+            borderRadius: "12px",
+            padding: "8px 14px",
+            display: "flex", 
+            alignItems: "center", 
+            gap: "8px",
+            boxShadow: "0 2px 10px rgba(184, 134, 11, 0.4)"
+          }}>
+            <Sparkles size={18} color="black" className="animate-pulse" />
             <span style={{ 
-              fontFamily: "var(--font-sans)", 
-              fontSize: "0.75rem", 
-              fontWeight: 800, 
+              fontFamily: "var(--font-serif)", 
+              fontSize: "0.8rem", 
+              fontWeight: 900, 
               textTransform: "uppercase", 
               letterSpacing: "0.1em",
-              color: "var(--gold)"
+              color: "black"
             }}>
               DOM AI
             </span>
           </div>
-          
-          <div style={{ width: "1px", height: "24px", background: "rgba(255,215,0,0.1)" }} />
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flex: 1, alignItems: "center", gap: "8px" }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flex: 1, alignItems: "center", gap: "10px" }}>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Comande a IA... (ex: 'Adicione o Carlos no evento X')"
+              placeholder="O que deseja fazer? (Ex: 'Publique o evento Expo Macaé')"
               style={{
                 background: "transparent",
                 border: "none",
-                padding: "8px",
+                padding: "10px 4px",
                 color: "white",
                 fontFamily: "var(--font-sans)",
-                fontSize: "0.9rem",
+                fontSize: "1rem",
                 flex: 1,
-                outline: "none"
+                outline: "none",
+                fontWeight: 500
               }}
             />
+
+            {modelsQuery.data && modelsQuery.data.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", opacity: 0.6 }}>
+                <Bot size={14} color="var(--gold)" />
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "rgba(255,255,255,0.7)",
+                    fontFamily: "var(--font-sans)",
+                    fontSize: "0.7rem",
+                    outline: "none",
+                    cursor: "pointer",
+                    maxWidth: "100px"
+                  }}
+                >
+                  <option value="" style={{ background: "#111" }}>Auto</option>
+                  {modelsQuery.data.map(model => (
+                    <option key={model} value={model} style={{ background: "#111" }}>{model}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <button
               type="submit"
               disabled={processCommand.isPending || !input.trim()}
               style={{
-                background: "linear-gradient(135deg, #FFD700 0%, #B8860B 100%)",
-                color: "black",
-                border: "none",
-                width: "36px",
-                height: "36px",
-                borderRadius: "10px",
+                background: "rgba(255,215,0,0.1)",
+                color: "var(--gold)",
+                border: "1px solid rgba(255,215,0,0.3)",
+                width: "42px",
+                height: "42px",
+                borderRadius: "14px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: processCommand.isPending ? "not-allowed" : "pointer",
                 transition: "all 0.2s",
-                boxShadow: "0 0 15px rgba(255,215,0,0.3)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--gold)";
+                e.currentTarget.style.color = "black";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(255,215,0,0.1)";
+                e.currentTarget.style.color = "var(--gold)";
               }}
             >
-              {processCommand.isPending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+              {processCommand.isPending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
             </button>
           </form>
         </div>
