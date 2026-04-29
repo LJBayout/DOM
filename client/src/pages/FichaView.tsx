@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, ContactRound, MapPin, UserRound, ArrowLeft, Pencil, Bed, Navigation } from "lucide-react";
+import { CalendarDays, ContactRound, MapPin, UserRound, ArrowLeft, Pencil, Bed, Navigation, Plus } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 
