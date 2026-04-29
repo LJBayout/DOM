@@ -235,7 +235,8 @@ export default function FichaForm() {
         contentType: file.type,
       });
  
-      const resp = await fetch(url, {
+      const uploadUrl = url.replace("minio", window.location.hostname);
+      const resp = await fetch(uploadUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type },
         body: file,
@@ -595,7 +596,8 @@ export default function FichaForm() {
                               filename: file.name,
                               contentType: file.type,
                             });
-                            await fetch(url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+                            const uploadUrl = url.replace("minio", window.location.hostname);
+                            await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
                             updateHotelField(activeHotelTab, "roomListPdfs", publicUrl);
                             toast.success("Room List enviada!");
                           } catch (err) {
