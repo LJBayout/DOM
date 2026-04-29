@@ -69,14 +69,17 @@ services:
       - .:/app # Mount to allow 'ollama create' to find Modelfile
 
   ollama-init:
-    image: curlimages/curl:latest
+    image: ollama/ollama:latest
+    volumes:
+      - .:/app
+    entrypoint: /bin/sh
     command: >
-      sh -c "
-      until curl -s http://ollama:11434/api/tags; do echo 'Waiting for Ollama...'; sleep 5; done;
+      -c "
+      until ollama list > /dev/null 2>&1; do echo 'Waiting for Ollama...'; sleep 5; done;
       echo 'Pulling llama3...';
-      curl -X POST http://ollama:11434/api/pull -d '{\"name\": \"llama3\"}';
+      ollama pull llama3;
       echo 'Creating dom-ai model...';
-      curl -X POST http://ollama:11434/api/create -d '{\"name\": \"dom-ai\", \"path\": \"/app/Modelfile\"}';
+      ollama create dom-ai -f /app/Modelfile;
       echo 'Ollama initialization complete!';
       "
     depends_on:
