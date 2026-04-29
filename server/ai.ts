@@ -47,8 +47,7 @@ async function resolveModel(preferredModel?: string): Promise<string> {
   return available[0];
 }
 
-export async function processAiCommand(prompt: string, model?: string) {
-  // 1. Fetch available events to provide context to the LLM
+export async function processAiCommand(messages: { role: 'user' | 'assistant' | 'system', content: string }[], model?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
 
@@ -61,36 +60,33 @@ export async function processAiCommand(prompt: string, model?: string) {
   console.log(`[Ollama] Using model: ${resolvedModel}`);
 
   const systemPrompt = `
-Você é um assistente especialista em gestão de eventos para a DOM Produções.
-Seu objetivo é analisar o pedido do usuário e retornar um objeto JSON estrito descrevendo a ação a ser executada no banco de dados.
+Você é o DOM AI, o assistente virtual inteligente da DOM Produções. 
+Você é proativo, eficiente e tem uma personalidade profissional porém amigável.
 
-Ações possíveis:
-- "add_professional": Adicionar um profissional à equipe técnica de um evento.
-- "update_ficha_status": Alterar o status do evento (ex: publicar, transformar em rascunho).
-- "add_schedule_item": Adicionar uma atividade ao cronograma do evento.
-- "update_event_info": Atualizar informações do evento (local, data, atração, endereço).
+Sua função é ajudar na gestão de fichas técnicas de eventos. Você pode realizar ações no banco de dados ou apenas conversar com o usuário.
 
 Contexto atual:
-Eventos cadastrados no banco de dados: [${eventNamesList}]
+Eventos cadastrados: [${eventNamesList}]
 
 Regras:
-1. Você DEVE responder APENAS com um objeto JSON válido. Não inclua texto antes ou depois do JSON.
-2. Tente fazer o 'match' do nome do evento citado pelo usuário com um dos eventos da lista de cadastrados.
-3. Se o usuário pedir para "publicar", use status "published". Se pedir "rascunho", use "draft".
+1. Você DEVE responder APENAS com um objeto JSON válido.
+2. Se o usuário pedir para realizar uma ação (adicionar profissional, mudar status, etc), identifique o evento e a ação.
+3. Se o usuário estiver apenas conversando ou fazendo uma pergunta, use a ação "chat".
+4. No campo "response", coloque a mensagem que eu (o bot) devo falar para o usuário. Mesmo se fizer uma ação, explique o que fez de forma amigável.
 
-Formatos de JSON esperados:
+Ações possíveis:
+- "add_professional": { "eventName": "...", "professionalName": "...", "professionalRole": "...", "professionalContact": "..." }
+- "update_ficha_status": { "eventName": "...", "status": "published" | "draft" }
+- "add_schedule_item": { "eventName": "...", "time": "HH:MM", "activity": "..." }
+- "update_event_info": { "eventName": "...", "field": "location" | "eventDate" | "attraction" | "address", "value": "..." }
+- "chat": { "text": "sua resposta aqui" }
 
-Para "add_professional":
-{ "action": "add_professional", "data": { "eventName": "...", "professionalName": "...", "professionalRole": "...", "professionalContact": "..." } }
-
-Para "update_ficha_status":
-{ "action": "update_ficha_status", "data": { "eventName": "...", "status": "published" | "draft" } }
-
-Para "add_schedule_item":
-{ "action": "add_schedule_item", "data": { "eventName": "...", "time": "HH:MM", "activity": "..." } }
-
-Para "update_event_info":
-{ "action": "update_event_info", "data": { "eventName": "...", "field": "location" | "eventDate" | "attraction" | "address", "value": "..." } }
+Formato de resposta esperado:
+{
+  "action": "add_professional" | "update_ficha_status" | "add_schedule_item" | "update_event_info" | "chat",
+  "data": { ... },
+  "response": "Sua mensagem amigável aqui explicando o que fez ou respondendo à pergunta."
+}
 `;
 
   try {
@@ -98,11 +94,11 @@ Para "update_event_info":
       model: resolvedModel,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
+        ...messages,
       ],
       format: "json",
       options: {
-        temperature: 0.1,
+        temperature: 0.7,
       },
     });
 
@@ -110,8 +106,17 @@ Para "update_event_info":
     raw = raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "");
     const result = JSON.parse(raw);
 
+    if (result.action === "chat") {
+      return { 
+        success: true, 
+        message: result.response || result.data?.text || "Olá! Como posso ajudar?", 
+        modelUsed: resolvedModel,
+        actionTaken: "chat"
+      };
+    }
+
     if (!result.action || !result.data || !result.data.eventName) {
-      return { success: false, message: "Comando incompleto ou evento não especificado.", raw: result };
+      return { success: false, message: result.response || "Comando incompleto ou evento não especificado.", raw: result };
     }
 
     const { eventName } = result.data;
@@ -139,7 +144,7 @@ Para "update_event_info":
         });
         return {
           success: true,
-          message: `✅ Profissional ${professionalName} adicionado como ${professionalRole || "Staff"} no evento ${actualEventName}.`,
+          message: result.response || `✅ Profissional ${professionalName} adicionado como ${professionalRole || "Staff"} no evento ${actualEventName}.`,
           modelUsed: resolvedModel,
         };
       }
@@ -151,7 +156,7 @@ Para "update_event_info":
         await updateFicha(eventId, { status: validStatus });
         return {
           success: true,
-          message: `✅ Status do evento ${actualEventName} alterado para ${validStatus === "published" ? "Publicado" : "Rascunho"}.`,
+          message: result.response || `✅ Status do evento ${actualEventName} alterado para ${validStatus === "published" ? "Publicado" : "Rascunho"}.`,
           modelUsed: resolvedModel,
         };
       }
@@ -167,7 +172,7 @@ Para "update_event_info":
         });
         return {
           success: true,
-          message: `✅ Item de cronograma ("${activity}") adicionado ao evento ${actualEventName}.`,
+          message: result.response || `✅ Item de cronograma ("${activity}") adicionado ao evento ${actualEventName}.`,
           modelUsed: resolvedModel,
         };
       }
@@ -181,7 +186,7 @@ Para "update_event_info":
           await updateFicha(eventId, updateData);
           return {
             success: true,
-            message: `✅ Informação "${field}" do evento ${actualEventName} atualizada para "${value}".`,
+            message: result.response || `✅ Informação "${field}" do evento ${actualEventName} atualizada para "${value}".`,
             modelUsed: resolvedModel,
           };
         }
@@ -189,7 +194,7 @@ Para "update_event_info":
       }
 
       default:
-        return { success: false, message: "Ação não suportada pelo modelo.", raw: result };
+        return { success: false, message: result.response || "Ação não suportada pelo modelo.", raw: result };
     }
   } catch (error: any) {
     console.error("[Ollama Error]", error);

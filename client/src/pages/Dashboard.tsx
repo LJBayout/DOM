@@ -197,6 +197,7 @@ export default function Dashboard() {
           </>
         )}
       </main>
+      <AiAssistant />
     </div>
   );
 }

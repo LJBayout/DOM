@@ -169,10 +169,16 @@ const fichaRouter = router({
     }),
 
   processAiCommand: adminProcedure
-    .input(z.object({ prompt: z.string(), model: z.string().optional() }))
+    .input(z.object({ 
+      messages: z.array(z.object({ 
+        role: z.enum(["user", "assistant", "system"]), 
+        content: z.string() 
+      })), 
+      model: z.string().optional() 
+    }))
     .mutation(async ({ input }) => {
       const { processAiCommand } = await import("./ai");
-      return await processAiCommand(input.prompt, input.model);
+      return await processAiCommand(input.messages, input.model);
     }),
 
   listModels: adminProcedure.query(async () => {

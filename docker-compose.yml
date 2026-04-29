@@ -15,7 +15,8 @@ services:
       - OLLAMA_URL=http://ollama:11434
     volumes:
       - .:/app
-      - /app/node_modules
+      - app_node_modules:/app/node_modules
+    command: sh -c "pnpm install --frozen-lockfile && pnpm run dev"
     depends_on:
       db:
         condition: service_healthy
@@ -102,3 +103,4 @@ volumes:
   minio_data:
   redis_data:
   ollama_data:
+  app_node_modules:
