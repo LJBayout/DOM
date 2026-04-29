@@ -36,20 +36,10 @@ export async function getPresignedUploadUrl(filename: string, contentType: strin
 
   const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
   
-  // Return the public URL and the key
-  // For MinIO, the public URL might need to be reachable from the browser
-  // If we are in Docker, "minio:9000" won't work for the browser.
-  // We need to replace the hostname with the server IP or a public domain.
-  const publicUrl = url.replace("http://minio:9000", window_location_origin_placeholder(url));
+  // The public URL used by the frontend should point to our proxy
+  const publicUrl = `/api/storage/${key}`;
   
   return { url, publicUrl, key };
-}
-
-function window_location_origin_placeholder(url: string) {
-    // This is tricky. The signed URL contains the host it was generated for.
-    // If generated inside Docker, it will have "minio:9000".
-    // We want the browser to use the VPS IP.
-    return "/api/storage/proxy"; // We will create a proxy route to handle this
 }
 
 export async function getPresignedDownloadUrl(key: string) {

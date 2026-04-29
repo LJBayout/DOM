@@ -557,6 +557,52 @@ export default function FichaForm() {
                   />
                 </div>
 
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <FieldLabel>Room List (PDF)</FieldLabel>
+                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <label style={{ 
+                      flex: 1, 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      gap: "0.5rem", 
+                      padding: "0.75rem", 
+                      background: "rgba(255,255,255,0.05)", 
+                      border: "1px dashed var(--rule)", 
+                      borderRadius: "var(--radius)", 
+                      cursor: "pointer",
+                      fontFamily: "var(--font-sans)",
+                      fontSize: "0.7rem",
+                      color: "var(--ink-light)"
+                    }}>
+                      <input 
+                        type="file" 
+                        accept="application/pdf" 
+                        style={{ display: "none" }} 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const { url, publicUrl, key } = await getUploadUrlMutation.mutateAsync({
+                              filename: file.name,
+                              contentType: file.type,
+                            });
+                            await fetch(url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+                            updateHotelField(activeHotelTab, "roomListPdfs", publicUrl);
+                            toast.success("Room List enviada!");
+                          } catch (err) {
+                            toast.error("Erro no upload.");
+                          }
+                        }}
+                      />
+                      <Download size={14} /> {hotels[activeHotelTab].roomListPdfs ? "Alterar Room List" : "Upload Room List (PDF)"}
+                    </label>
+                    {hotels[activeHotelTab].roomListPdfs && (
+                      <span style={{ color: "var(--gold)", fontSize: "0.65rem", fontWeight: 700 }}>✓ CARREGADO</span>
+                    )}
+                  </div>
+                </div>
+
               </div>
             </div>
           </Section>
