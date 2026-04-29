@@ -7,11 +7,12 @@ services:
       - DATABASE_URL=mysql://root:password@db:3306/ficha_tecnica?charset=utf8mb4
       - NODE_ENV=development
       - JWT_SECRET=${JWT_SECRET:-local-dev-secret-change-me}
-      - S3_ENDPOINT=http://187.127.19.113:9000
+      - S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
       - S3_BUCKET=fichas-tecnicas
       - REDIS_URL=redis://redis:6379
+      - OLLAMA_URL=http://ollama:11434
     volumes:
       - .:/app
       - /app/node_modules
@@ -21,6 +22,8 @@ services:
       minio:
         condition: service_started
       redis:
+        condition: service_started
+      ollama:
         condition: service_started
 
   db:
@@ -57,6 +60,28 @@ services:
     volumes:
       - redis_data:/data
 
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - .:/app # Mount to allow 'ollama create' to find Modelfile
+
+  ollama-init:
+    image: curlimages/curl:latest
+    command: >
+      sh -c "
+      until curl -s http://ollama:11434/api/tags; do echo 'Waiting for Ollama...'; sleep 5; done;
+      echo 'Pulling llama3...';
+      curl -X POST http://ollama:11434/api/pull -d '{\"name\": \"llama3\"}';
+      echo 'Creating dom-ai model...';
+      curl -X POST http://ollama:11434/api/create -d '{\"name\": \"dom-ai\", \"path\": \"/app/Modelfile\"}';
+      echo 'Ollama initialization complete!';
+      "
+    depends_on:
+      - ollama
+
   phpmyadmin:
     image: phpmyadmin:latest
     ports:
@@ -73,3 +98,4 @@ volumes:
   mysql_data:
   minio_data:
   redis_data:
+  ollama_data:
