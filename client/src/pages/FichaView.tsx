@@ -102,7 +102,7 @@ export default function FichaView() {
           </div>
 
           <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2.5rem, 10vw, 5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.04em", lineHeight: 0.9, marginBottom: "0.25rem" }}>
-            {ficha.eventName} (V2)
+            {ficha.eventName}
           </h1>
           <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.5rem, 6vw, 3rem)", fontWeight: 400, fontStyle: "italic", color: "var(--gold)", letterSpacing: "-0.02em", lineHeight: 1, marginBottom: "2.5rem" }}>
             {ficha.attraction || "Evento DOM"}
