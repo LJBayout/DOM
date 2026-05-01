@@ -22,7 +22,7 @@ import {
   updateFicha,
 } from "./db";
 import { getPresignedUploadUrl } from "./storage";
-import { saveProducerSuggestion, getProducerSuggestions } from "./redis";
+import { saveSuggestions, getAllSuggestions } from "./redis";
 
 // ─── Admin Middleware ─────────────────────────────────────────────────────────
 
@@ -122,6 +122,7 @@ const fichaRouter = router({
         replaceHotels(fichaId, input.hotels),
         replaceLogistics(fichaId, input.logistics),
       ]);
+      await saveSuggestions(input);
       return { id: fichaId };
     }),
 
@@ -148,9 +149,7 @@ const fichaRouter = router({
         replaceHotels(input.id, input.data.hotels),
         replaceLogistics(input.id, input.data.logistics),
       ]);
-      if (input.data.localProducerName || input.data.localProducerContact) {
-        await saveProducerSuggestion(input.data.localProducerName || "", input.data.localProducerContact || "");
-      }
+      await saveSuggestions(input.data);
       return { success: true };
     }),
 
@@ -163,9 +162,9 @@ const fichaRouter = router({
       return { success: true };
     }),
 
-  getProducerSuggestions: adminProcedure
+  getAllSuggestions: adminProcedure
     .query(async () => {
-      return await getProducerSuggestions();
+      return await getAllSuggestions();
     }),
 
   processAiCommand: adminProcedure

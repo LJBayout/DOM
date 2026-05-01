@@ -148,7 +148,7 @@ export default function FichaForm() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const { data: producerSuggestions } = trpc.ficha.getProducerSuggestions.useQuery();
+  const { data: suggestions } = trpc.ficha.getAllSuggestions.useQuery();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -304,11 +304,17 @@ export default function FichaForm() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.25rem" }}>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Nome do Evento</FieldLabel>
-                <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Ex.: Festival DOM 2024" required style={inputStyle} />
+                <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Ex.: Festival DOM 2024" list="event-names" required style={inputStyle} />
+                <datalist id="event-names">
+                  {suggestions?.events?.names?.map((n) => <option key={n} value={n} />)}
+                </datalist>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Atração Principal</FieldLabel>
-                <input type="text" value={attraction} onChange={(e) => setAttraction(e.target.value)} placeholder="Ex.: Artista ou Banda Principal" style={inputStyle} />
+                <input type="text" value={attraction} onChange={(e) => setAttraction(e.target.value)} placeholder="Ex.: Artista ou Banda Principal" list="event-attractions" style={inputStyle} />
+                <datalist id="event-attractions">
+                  {suggestions?.events?.attractions?.map((a) => <option key={a} value={a} />)}
+                </datalist>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Riders e Mapas (PDF)</FieldLabel>
@@ -335,11 +341,17 @@ export default function FichaForm() {
               </div>
               <div>
                 <FieldLabel>Cidade / UF</FieldLabel>
-                <input type="text" value={stateCity} onChange={(e) => setStateCity(e.target.value)} placeholder="Ex.: Rio de Janeiro, RJ" style={inputStyle} />
+                <input type="text" value={stateCity} onChange={(e) => setStateCity(e.target.value)} placeholder="Ex.: Rio de Janeiro, RJ" list="event-stateCities" style={inputStyle} />
+                <datalist id="event-stateCities">
+                  {suggestions?.events?.stateCities?.map((s) => <option key={s} value={s} />)}
+                </datalist>
               </div>
               <div>
                 <FieldLabel>Local / Venue</FieldLabel>
-                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ex.: Arena DOM" style={inputStyle} />
+                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ex.: Arena DOM" list="event-locations" style={inputStyle} />
+                <datalist id="event-locations">
+                  {suggestions?.events?.locations?.map((l) => <option key={l} value={l} />)}
+                </datalist>
               </div>
               <div>
                 <FieldLabel>Status da Ficha</FieldLabel>
@@ -350,20 +362,23 @@ export default function FichaForm() {
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Endereço Completo</FieldLabel>
-                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Endereço para logística" style={inputStyle} />
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Endereço para logística" list="event-addresses" style={inputStyle} />
+                <datalist id="event-addresses">
+                  {suggestions?.events?.addresses?.map((a) => <option key={a} value={a} />)}
+                </datalist>
               </div>
               <div>
                 <FieldLabel>Produtor Responsável</FieldLabel>
                 <input type="text" value={localProducerName} onChange={(e) => setLocalProducerName(e.target.value)} placeholder="Nome do produtor" list="producer-names" style={inputStyle} />
                 <datalist id="producer-names">
-                  {producerSuggestions?.names?.map((n) => <option key={n} value={n} />)}
+                  {suggestions?.producers?.names?.map((n) => <option key={n} value={n} />)}
                 </datalist>
               </div>
               <div>
                 <FieldLabel>Contato Produção</FieldLabel>
                 <input type="text" value={localProducerContact} onChange={(e) => setLocalProducerContact(e.target.value)} placeholder="Telefone ou e-mail" list="producer-contacts" style={inputStyle} />
                 <datalist id="producer-contacts">
-                  {producerSuggestions?.contacts?.map((c) => <option key={c} value={c} />)}
+                  {suggestions?.producers?.contacts?.map((c) => <option key={c} value={c} />)}
                 </datalist>
               </div>
             </div>
@@ -400,18 +415,25 @@ export default function FichaForm() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
                     <div>
                       <FieldLabel>Nome</FieldLabel>
-                      <input type="text" value={row.name} onChange={(e) => updateProfRow(i, "name", e.target.value)} placeholder="Nome completo" style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <input type="text" value={row.name} onChange={(e) => updateProfRow(i, "name", e.target.value)} placeholder="Nome completo" list={`prof-names-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`prof-names-${i}`}>
+                        {suggestions?.professionals?.names?.map((n) => <option key={n} value={n} />)}
+                      </datalist>
                     </div>
                     <div>
                       <FieldLabel>Função</FieldLabel>
                       <input type="text" value={row.role} onChange={(e) => updateProfRow(i, "role", e.target.value)} placeholder="Ex.: Técnico de Som" list={`role-suggestions-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
                       <datalist id={`role-suggestions-${i}`}>
                         {ROLE_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
+                        {suggestions?.professionals?.roles?.map((s) => <option key={`dyn-${s}`} value={s} />)}
                       </datalist>
                     </div>
                     <div style={{ gridColumn: "1 / -1" }}>
                       <FieldLabel>Contato</FieldLabel>
-                      <input type="text" value={row.contact} onChange={(e) => updateProfRow(i, "contact", e.target.value)} placeholder="Telefone ou WhatsApp" style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <input type="text" value={row.contact} onChange={(e) => updateProfRow(i, "contact", e.target.value)} placeholder="Telefone ou WhatsApp" list={`prof-contacts-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`prof-contacts-${i}`}>
+                        {suggestions?.professionals?.contacts?.map((c) => <option key={c} value={c} />)}
+                      </datalist>
                     </div>
                   </div>
                 </div>
@@ -495,8 +517,12 @@ export default function FichaForm() {
                     value={hotels[activeHotelTab].name}
                     onChange={(e) => updateHotelField(activeHotelTab, "name", e.target.value)}
                     placeholder="Ex.: Grand Hyatt Rio"
+                    list={`hotel-names-${activeHotelTab}`}
                     style={inputStyle}
                   />
+                  <datalist id={`hotel-names-${activeHotelTab}`}>
+                    {suggestions?.hotels?.names?.map((n) => <option key={n} value={n} />)}
+                  </datalist>
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
                   <FieldLabel>Endereço do Hotel</FieldLabel>
@@ -505,8 +531,12 @@ export default function FichaForm() {
                     value={hotels[activeHotelTab].address}
                     onChange={(e) => updateHotelField(activeHotelTab, "address", e.target.value)}
                     placeholder="Endereço completo para a van/logística"
+                    list={`hotel-addresses-${activeHotelTab}`}
                     style={inputStyle}
                   />
+                  <datalist id={`hotel-addresses-${activeHotelTab}`}>
+                    {suggestions?.hotels?.addresses?.map((a) => <option key={a} value={a} />)}
+                  </datalist>
                 </div>
                 <div>
                   <FieldLabel>Contato do Hotel / Recepção</FieldLabel>
@@ -515,8 +545,12 @@ export default function FichaForm() {
                     value={hotels[activeHotelTab].contact}
                     onChange={(e) => updateHotelField(activeHotelTab, "contact", e.target.value)}
                     placeholder="Telefone ou e-mail"
+                    list={`hotel-contacts-${activeHotelTab}`}
                     style={inputStyle}
                   />
+                  <datalist id={`hotel-contacts-${activeHotelTab}`}>
+                    {suggestions?.hotels?.contacts?.map((c) => <option key={c} value={c} />)}
+                  </datalist>
                 </div>
                 <div>
                   <FieldLabel>Pessoa de Contato</FieldLabel>
@@ -645,18 +679,25 @@ export default function FichaForm() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
                     <div>
                       <FieldLabel>Cargo / Função</FieldLabel>
-                      <input type="text" value={row.role} onChange={(e) => updateLogisticsRow(i, "role", e.target.value)} placeholder="Ex.: Motorista Van" list={`logistics-suggestions-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
-                      <datalist id={`logistics-suggestions-${i}`}>
+                      <input type="text" value={row.role} onChange={(e) => updateLogisticsRow(i, "role", e.target.value)} placeholder="Ex.: Motorista Van" list={`logistics-roles-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`logistics-roles-${i}`}>
                         {LOGISTICS_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
+                        {suggestions?.logistics?.roles?.map((s) => <option key={`dyn-${s}`} value={s} />)}
                       </datalist>
                     </div>
                     <div>
                       <FieldLabel>Nome</FieldLabel>
-                      <input type="text" value={row.name} onChange={(e) => updateLogisticsRow(i, "name", e.target.value)} placeholder="Nome completo" style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <input type="text" value={row.name} onChange={(e) => updateLogisticsRow(i, "name", e.target.value)} placeholder="Nome completo" list={`logistics-names-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`logistics-names-${i}`}>
+                        {suggestions?.logistics?.names?.map((n) => <option key={n} value={n} />)}
+                      </datalist>
                     </div>
                     <div style={{ gridColumn: "1 / -1" }}>
                       <FieldLabel>Contato</FieldLabel>
-                      <input type="text" value={row.contact} onChange={(e) => updateLogisticsRow(i, "contact", e.target.value)} placeholder="Telefone ou WhatsApp" style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <input type="text" value={row.contact} onChange={(e) => updateLogisticsRow(i, "contact", e.target.value)} placeholder="Telefone ou WhatsApp" list={`logistics-contacts-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`logistics-contacts-${i}`}>
+                        {suggestions?.logistics?.contacts?.map((c) => <option key={c} value={c} />)}
+                      </datalist>
                     </div>
                   </div>
                 </div>
