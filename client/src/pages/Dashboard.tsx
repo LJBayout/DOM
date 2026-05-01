@@ -246,7 +246,15 @@ export default function Dashboard() {
                   </div>
                   <div 
                     onClick={(e) => e.stopPropagation()}
-                    style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}
+                    style={{ 
+                      display: "flex", 
+                      gap: "0.4rem", 
+                      borderTop: "1px solid var(--border)", 
+                      paddingTop: "1rem",
+                      overflowX: "auto",
+                      scrollbarWidth: "none", // Hide scrollbar on Firefox
+                    }}
+                    className="no-scrollbar" // Add class to hide scrollbar
                   >
                     <ActionBtn onClick={() => navigate(`/ficha/${ficha.id}`)} icon={Eye} label="Ver" />
                     <ActionBtn onClick={() => openRiders(ficha.id, ficha.eventName, ficha.attractionPdfs)} icon={FileText} label="Riders" />
@@ -392,23 +400,27 @@ function ActionBtn({ onClick, label, icon: Icon, danger = false, disabled = fals
       onClick={onClick}
       disabled={disabled}
       style={{
-        padding: "0.5rem 1rem",
+        padding: "0.4rem 0.6rem",
         background: isPrimary ? "var(--gold)" : danger ? "rgba(153, 27, 27, 0.1)" : "rgba(255, 255, 255, 0.05)",
         color: isPrimary ? "var(--ink)" : danger ? "#ff4444" : "var(--foreground)",
         border: `1px solid ${isPrimary ? "var(--gold)" : danger ? "#991b1b" : "var(--border)"}`,
         fontFamily: "var(--font-sans)",
-        fontSize: "0.65rem",
+        fontSize: "0.55rem",
         fontWeight: 700,
-        letterSpacing: "0.08em",
+        letterSpacing: "0.05em",
         textTransform: "uppercase",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1,
         borderRadius: "var(--radius-sm)",
         display: "flex",
         alignItems: "center",
-        gap: "0.4rem",
+        justifyContent: "center",
+        gap: "0.3rem",
         transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         boxShadow: isPrimary ? "0 4px 12px rgba(212, 175, 55, 0.2)" : "none",
+        whiteSpace: "nowrap",
+        flex: 1, // Allow buttons to grow and fill the row equally
+        minWidth: "fit-content",
       }}
       onMouseEnter={(e) => {
         if (disabled) return;
