@@ -70,6 +70,7 @@ const fichaInputSchema = z.object({
   stateCity: z.string().max(255).optional().default(""),
   location: z.string().max(255),
   address: z.string().optional().default(""),
+  gpsLink: z.string().optional().default(""),
   localProducerName: z.string().max(255).optional().default(""),
   localProducerContact: z.string().max(255).optional().default(""),
   status: z.enum(["draft", "published"]).optional().default("draft"),
@@ -111,6 +112,7 @@ const fichaRouter = router({
         stateCity: input.stateCity,
         location: input.location,
         address: input.address,
+        gpsLink: input.gpsLink,
         localProducerName: input.localProducerName,
         localProducerContact: input.localProducerContact,
         status: input.status,
@@ -139,6 +141,7 @@ const fichaRouter = router({
         stateCity: input.data.stateCity,
         location: input.data.location,
         address: input.data.address,
+        gpsLink: input.data.gpsLink,
         localProducerName: input.data.localProducerName,
         localProducerContact: input.data.localProducerContact,
         status: input.data.status,
@@ -190,6 +193,13 @@ const fichaRouter = router({
     .mutation(async ({ input }) => {
       const { parseFichaTextWithAi } = await import("./ai");
       return await parseFichaTextWithAi(input.text);
+    }),
+  
+  generateGpsLink: adminProcedure
+    .input(z.object({ location: z.string(), address: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const { suggestGpsLink } = await import("./ai");
+      return await suggestGpsLink(input.location, input.address || "");
     }),
 });
  

@@ -55,6 +55,7 @@ export default function FichaForm() {
   const [stateCity, setStateCity] = useState("");
   const [location, setLocation] = useState("");
   const [address, setAddress] = useState("");
+  const [gpsLink, setGpsLink] = useState("");
   const [localProducerName, setLocalProducerName] = useState("");
   const [localProducerContact, setLocalProducerContact] = useState("");
   const [status, setStatus] = useState<"draft" | "published">("draft");
@@ -69,6 +70,14 @@ export default function FichaForm() {
   // Magic Fill state
   const [showMagicInput, setShowMagicInput] = useState(false);
   const [magicText, setMagicText] = useState("");
+
+  // GPS Modal state
+  const [gpsModal, setGpsModal] = useState<{ open: boolean; target: "venue" | "hotel"; initialValue: string; hotelIdx?: number }>({
+    open: false,
+    target: "venue",
+    initialValue: ""
+  });
+  const [gpsSearchValue, setGpsSearchValue] = useState("");
 
   const parseMutation = trpc.ficha.parseFichaText.useMutation({
     onSuccess: (data) => {
@@ -91,6 +100,8 @@ export default function FichaForm() {
     },
     onError: (err) => toast.error(err.message)
   });
+
+  const gpsMutation = trpc.ficha.generateGpsLink.useMutation();
 
   // Auth guard
   useEffect(() => {
@@ -120,6 +131,7 @@ export default function FichaForm() {
       setStateCity(fichaData.stateCity);
       setLocation(fichaData.location);
       setAddress(fichaData.address);
+      setGpsLink(fichaData.gpsLink || "");
       setLocalProducerName(fichaData.localProducerName);
       setLocalProducerContact(fichaData.localProducerContact);
       setStatus(fichaData.status);
@@ -187,6 +199,7 @@ export default function FichaForm() {
       stateCity,
       location,
       address,
+      gpsLink,
       localProducerName,
       localProducerContact,
       status,
@@ -410,7 +423,20 @@ export default function FichaForm() {
                 </datalist>
               </div>
               <div>
-                <FieldLabel>Local / Venue</FieldLabel>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <FieldLabel>Local / Venue</FieldLabel>
+                  <button
+                    type="button"
+                    disabled={gpsMutation.isPending}
+                    onClick={() => {
+                      setGpsSearchValue(location || address);
+                      setGpsModal({ open: true, target: "venue", initialValue: location || address });
+                    }}
+                    style={{ background: "transparent", border: "none", color: "var(--gold)", fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline", opacity: gpsMutation.isPending ? 0.5 : 1 }}
+                  >
+                    {gpsMutation.isPending ? "Gerando..." : "Localizar GPS (IA)"}
+                  </button>
+                </div>
                 <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ex.: Arena DOM" list="event-locations" style={inputStyle} />
                 <datalist id="event-locations">
                   {suggestions?.events?.locations?.map((l) => <option key={l} value={l} />)}
@@ -640,17 +666,15 @@ export default function FichaForm() {
                     <FieldLabel>Link GPS (Google Maps)</FieldLabel>
                     <button
                       type="button"
+                      disabled={gpsMutation.isPending}
                       onClick={() => {
                         const h = hotels[activeHotelTab];
-                        const query = encodeURIComponent(`${h.name} ${h.address}`);
-                        if (query) {
-                          updateHotelField(activeHotelTab, "gpsLink", `https://www.google.com/maps/search/?api=1&query=${query}`);
-                          toast.success("Link gerado com sucesso!");
-                        }
+                        setGpsSearchValue(h.name || h.address);
+                        setGpsModal({ open: true, target: "hotel", initialValue: h.name || h.address, hotelIdx: activeHotelTab });
                       }}
-                      style={{ background: "transparent", border: "none", color: "var(--gold)", fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline" }}
+                      style={{ background: "transparent", border: "none", color: "var(--gold)", fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline", opacity: gpsMutation.isPending ? 0.5 : 1 }}
                     >
-                      Gerar Link
+                      {gpsMutation.isPending ? "Gerando..." : "Gerar com IA"}
                     </button>
                   </div>
                   <input
@@ -788,6 +812,67 @@ export default function FichaForm() {
           </div>
         </form>
       </main>
+
+      {/* Custom GPS AI Modal */}
+      {gpsModal.open && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.25rem", backdropFilter: "blur(4px)" }}>
+          <div style={{ background: "var(--ink)", width: "100%", maxWidth: "500px", padding: "2.5rem", borderRadius: "var(--radius)", border: "1px solid var(--gold)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
+            <h2 style={{ fontFamily: "var(--font-serif)", color: "white", fontSize: "1.5rem", marginBottom: "0.5rem", fontWeight: 800 }}>Localização GPS (IA)</h2>
+            <p style={{ fontFamily: "var(--font-sans)", color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", marginBottom: "2rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Refine o local para a busca do Google Maps</p>
+            
+            <FieldLabel style={{ color: "var(--gold)" }}>Nome do Local ou Endereço</FieldLabel>
+            <input 
+              autoFocus
+              type="text" 
+              value={gpsSearchValue} 
+              onChange={e => setGpsSearchValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const btn = document.getElementById('gps-confirm-btn');
+                  btn?.click();
+                }
+              }}
+              style={{ ...inputStyle, background: "rgba(255,255,255,0.05)", border: "1px solid var(--gold)", color: "white" }} 
+            />
+            
+            <div style={{ display: "flex", gap: "1rem", marginTop: "2.5rem" }}>
+              <button 
+                type="button" 
+                onClick={() => setGpsModal({ ...gpsModal, open: false })}
+                style={{ flex: 1, padding: "0.8rem", background: "transparent", color: "white", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer" }}
+              >
+                Cancelar
+              </button>
+              <button 
+                id="gps-confirm-btn"
+                type="button"
+                disabled={gpsMutation.isPending || !gpsSearchValue.trim()}
+                onClick={async () => {
+                  try {
+                    const result = await gpsMutation.mutateAsync({ location: gpsSearchValue, address: "" });
+                    if (gpsModal.target === "venue") {
+                      setGpsLink(result.url);
+                      if (result.refinedName) setLocation(result.refinedName);
+                      if (result.refinedAddress) setAddress(result.refinedAddress);
+                    } else if (gpsModal.hotelIdx !== undefined) {
+                      updateHotelField(gpsModal.hotelIdx, "gpsLink", result.url);
+                      if (result.refinedName) updateHotelField(gpsModal.hotelIdx, "name", result.refinedName);
+                      if (result.refinedAddress) updateHotelField(gpsModal.hotelIdx, "address", result.refinedAddress);
+                    }
+                    toast.success("Link GPS e dados atualizados!");
+                    setGpsModal({ ...gpsModal, open: false });
+                  } catch (e) {
+                    toast.error("Erro ao gerar link.");
+                  }
+                }}
+                style={{ flex: 1, padding: "0.8rem", background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase", cursor: "pointer", opacity: gpsMutation.isPending ? 0.6 : 1 }}
+              >
+                {gpsMutation.isPending ? "Gerando..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -33,6 +33,7 @@ export const fichasTecnicas = mysqlTable("fichas_tecnicas", {
   stateCity: varchar("stateCity", { length: 255 }).notNull().default(""),
   location: varchar("location", { length: 255 }).notNull().default(""),
   address: text("address").notNull().default(""),
+  gpsLink: text("gpsLink").notNull().default(""),
   localProducerName: varchar("localProducerName", { length: 255 }).notNull().default(""),
   localProducerContact: varchar("localProducerContact", { length: 255 }).notNull().default(""),
   hotelName: varchar("hotelName", { length: 255 }).notNull().default(""),

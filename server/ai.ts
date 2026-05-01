@@ -320,3 +320,47 @@ Regras:
     throw new Error("Erro ao interpretar texto: " + err.message);
   }
 }
+
+export async function suggestGpsLink(locationName: string, address: string, model?: string) {
+  const resolvedModel = await resolveModel(model);
+  
+  const systemPrompt = `
+Você é um especialista em geolocalização. O usuário fornecerá um nome de local e, opcionalmente, um endereço.
+Sua tarefa é retornar um JSON com os campos:
+- "searchQuery": os termos ideais para busca no Google Maps.
+- "refinedName": o nome formal e exato do local.
+- "refinedAddress": o endereço completo, formal e exato do local (Logradouro, número, bairro, cidade, estado, CEP se disponível).
+Não invente coordenadas.
+
+Exemplo:
+Entrada: { "name": "Arena DOM", "address": "Silva Jardim" }
+Saída: { "searchQuery": "Arena DOM, Silva Jardim, RJ", "refinedName": "Arena DOM", "refinedAddress": "Rua Silva Jardim, 123 - Centro, Silva Jardim - RJ, 28820-000" }
+`;
+
+  try {
+    const response = await ollama.chat({
+      model: resolvedModel,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: JSON.stringify({ name: locationName, address }) }
+      ],
+      format: "json",
+      options: { temperature: 0.1 },
+    });
+
+    let raw = response.message.content.trim();
+    raw = raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "");
+    const result = JSON.parse(raw);
+    const query = encodeURIComponent(result.searchQuery || `${locationName} ${address}`);
+    return { 
+      query: result.searchQuery,
+      refinedName: result.refinedName,
+      refinedAddress: result.refinedAddress,
+      url: `https://www.google.com/maps/search/?api=1&query=${query}` 
+    };
+  } catch (err: any) {
+    // Fallback to simple query
+    const query = encodeURIComponent(`${locationName} ${address}`);
+    return { query: `${locationName} ${address}`, url: `https://www.google.com/maps/search/?api=1&query=${query}` };
+  }
+}

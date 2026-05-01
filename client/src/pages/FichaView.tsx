@@ -201,7 +201,16 @@ export default function FichaView() {
               </p>
               <div style={{ fontSize: "14px", lineHeight: "1.5" }}>
                 <p><strong>NOME DO EVENTO:</strong> {ficha.eventName.toUpperCase()}</p>
-                <p><strong>LOCAL DO EVENTO:</strong> ({ficha.location.toUpperCase()})<br/> {ficha.address.toUpperCase()}</p>
+                <p><strong>LOCAL DO EVENTO:</strong><br/>
+                  {ficha.gpsLink ? (
+                    <a href={ficha.gpsLink} target="_blank" rel="noreferrer" style={{ color: "inherit", textDecoration: "none" }}>
+                      ({ficha.location.toUpperCase()}) 📍
+                    </a>
+                  ) : (
+                    `(${ficha.location.toUpperCase()})`
+                  )}
+                  <br/> {ficha.address.toUpperCase()}
+                </p>
                 <div style={{ marginTop: "20px" }}>
                   <p><strong>PRODUTOR LOCAL:</strong> {ficha.localProducerName?.toUpperCase() || "—"} (DOM) TEL: {ficha.localProducerContact || "—"}</p>
                   <p><strong>PRODUTOR RESPONSÁVEL:</strong> GUSTAVO BAYOUT (DOM) TEL: 22 99263-0265</p>
@@ -246,8 +255,20 @@ export default function FichaView() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem 2rem" }}>
               <ViewField label="Atração Principal" value={ficha.attraction || "—"} wide />
               <ViewField label="Data do Evento" value={formatDate(ficha.eventDate)} />
-              <ViewField label="Localização" value={ficha.stateCity || "—"} />
-              <ViewField label="Nome do Local" value={ficha.location || "—"} />
+              <ViewField label="Cidade / UF" value={ficha.stateCity || "—"} />
+              <div style={{ gridColumn: "1 / -1" }}>
+                <FieldLabel>Nome do Local / Venue</FieldLabel>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <p style={{ fontFamily: "var(--font-sans)", fontSize: "1.1rem", fontWeight: 600, color: "var(--ink)" }}>
+                    {ficha.location || "—"}
+                  </p>
+                  {ficha.gpsLink && (
+                    <a href={ficha.gpsLink} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", padding: "0.3rem 0.6rem", background: "var(--gold)", color: "var(--ink)", borderRadius: "var(--radius-sm)", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", textDecoration: "none" }}>
+                      <Navigation size={12} /> Ver no Mapa
+                    </a>
+                  )}
+                </div>
+              </div>
               <ViewField label="Endereço Completo" value={ficha.address || "—"} wide />
               <ViewField label="Produção Local" value={ficha.localProducerName || "—"} />
               <ViewField label="Contato Produção" value={ficha.localProducerContact || "—"} />
@@ -282,7 +303,14 @@ export default function FichaView() {
               {ficha.hotels.map((hotel) => (
                 <div key={hotel.id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.5rem", position: "relative" }}>
                   <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: "var(--gold)" }} />
-                  <h3 style={{ fontWeight: 700, marginBottom: "0.25rem" }}>{hotel.name}</h3>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                    <h3 style={{ fontWeight: 700, margin: 0 }}>{hotel.name}</h3>
+                    {hotel.gpsLink && (
+                      <a href={hotel.gpsLink} target="_blank" rel="noreferrer" style={{ color: "var(--gold)", display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", textDecoration: "none" }}>
+                        <Navigation size={12} /> Mapa
+                      </a>
+                    )}
+                  </div>
                   <p style={{ fontSize: "0.8rem", color: "var(--ink-mid)" }}>{hotel.address}</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem", marginTop: "1rem" }}>
                     <ViewField label="Contato" value={hotel.contact || "—"} />
@@ -352,5 +380,22 @@ function ViewField({ label, value, wide }: { label: string; value: string; wide?
         {value}
       </p>
     </div>
+  );
+}
+
+function FieldLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <p style={{
+      fontFamily: "var(--font-sans)",
+      fontSize: "0.55rem",
+      letterSpacing: "0.15em",
+      textTransform: "uppercase",
+      color: "var(--gold)",
+      marginBottom: "0.3rem",
+      fontWeight: 700,
+      ...style
+    }}>
+      {children}
+    </p>
   );
 }
