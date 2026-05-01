@@ -263,10 +263,17 @@ export default function FichaForm() {
  
   const getUploadUrlMutation = trpc.storage.getUploadUrl.useMutation();
  
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.type !== "application/pdf") { toast.error("Apenas arquivos PDF são permitidos."); return; }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("Arquivo muito grande! O limite máximo é de 5MB para evitar lentidão no sistema.");
+      e.target.value = "";
+      return;
+    }
  
     try {
       const { url, publicUrl, proxyUploadUrl, key } = await getUploadUrlMutation.mutateAsync({
@@ -418,6 +425,7 @@ export default function FichaForm() {
                     <Plus size={14} /> Enviar PDF
                     <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ display: "none" }} />
                   </label>
+                  <p style={{ fontSize: '0.6rem', color: 'var(--ink-faint)', fontStyle: 'italic', marginTop: '-0.5rem' }}>Limite máximo: 5MB por arquivo.</p>
                 </div>
               </div>
               <div>
@@ -720,6 +728,11 @@ export default function FichaForm() {
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
+                          if (file.size > MAX_FILE_SIZE) {
+                            toast.error("O Room List é muito pesado! Limite: 5MB.");
+                            e.target.value = "";
+                            return;
+                          }
                           try {
                             const { url, publicUrl, proxyUploadUrl, key } = await getUploadUrlMutation.mutateAsync({
                               filename: file.name,
@@ -741,6 +754,7 @@ export default function FichaForm() {
                       />
                       <Download size={14} /> {hotels[activeHotelTab].roomListPdfs ? "Alterar Room List" : "Upload Room List (PDF)"}
                     </label>
+                    <p style={{ fontSize: '0.6rem', color: 'var(--ink-faint)', fontStyle: 'italic', marginTop: '0.25rem', width: '100%' }}>Limite: 5MB.</p>
                     {hotels[activeHotelTab].roomListPdfs && (
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                         <span style={{ color: "var(--gold)", fontSize: "0.65rem", fontWeight: 700 }}>✓ CARREGADO</span>
