@@ -269,7 +269,7 @@ export default function FichaForm() {
     if (file.type !== "application/pdf") { toast.error("Apenas arquivos PDF são permitidos."); return; }
  
     try {
-      const { url, publicUrl, key } = await getUploadUrlMutation.mutateAsync({
+      const { url, publicUrl, proxyUploadUrl, key } = await getUploadUrlMutation.mutateAsync({
         filename: file.name,
         contentType: file.type,
       });
@@ -279,7 +279,16 @@ export default function FichaForm() {
         body: file,
       });
  
-      if (!resp.ok) throw new Error("Falha no upload.");
+      if (!resp.ok) {
+        // Fallback to proxy upload if direct upload fails (CORS/Network)
+        console.warn("Direct upload failed, trying proxy...");
+        const proxyResp = await fetch(proxyUploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        if (!proxyResp.ok) throw new Error("Falha no upload via proxy.");
+      }
  
       setAttractionFiles((prev) => [...prev, { name: file.name, url: publicUrl, key }]);
       toast.success("PDF enviado.");
@@ -712,11 +721,17 @@ export default function FichaForm() {
                           const file = e.target.files?.[0];
                           if (!file) return;
                           try {
-                            const { url, publicUrl, key } = await getUploadUrlMutation.mutateAsync({
+                            const { url, publicUrl, proxyUploadUrl, key } = await getUploadUrlMutation.mutateAsync({
                               filename: file.name,
                               contentType: file.type,
                             });
-                            await fetch(url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+                            const resp = await fetch(url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+                            
+                            if (!resp.ok) {
+                              const proxyResp = await fetch(proxyUploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+                              if (!proxyResp.ok) throw new Error("Erro via proxy");
+                            }
+
                             updateHotelField(activeHotelTab, "roomListPdfs", publicUrl);
                             toast.success("Room List enviada!");
                           } catch (err) {

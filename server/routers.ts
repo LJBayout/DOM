@@ -209,8 +209,8 @@ const fichaRouter = router({
    getUploadUrl: adminProcedure
      .input(z.object({ filename: z.string(), contentType: z.string() }))
      .mutation(async ({ input }) => {
-       const { url, key, publicUrl } = await getPresignedUploadUrl(input.filename, input.contentType);
-       return { url, key, publicUrl };
+       const { url, key, publicUrl, proxyUploadUrl } = await getPresignedUploadUrl(input.filename, input.contentType);
+       return { url, key, publicUrl, proxyUploadUrl };
      }),
  });
  

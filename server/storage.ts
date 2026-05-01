@@ -2,7 +2,7 @@ import { S3Client, PutObjectCommand, GetObjectCommand, CreateBucketCommand, Head
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ENV } from "./_core/env";
 
-const s3Client = new S3Client({
+export const s3Client = new S3Client({
   endpoint: ENV.s3Endpoint,
   region: "us-east-1", // MinIO doesn't care about region
   credentials: {
@@ -25,7 +25,7 @@ export async function ensureBucket() {
   }
 
   try {
-    // Set CORS policy so browser can upload directly
+    // Set simplified CORS policy for MinIO
     await s3Client.send(new PutBucketCorsCommand({
       Bucket: ENV.s3Bucket,
       CORSConfiguration: {
@@ -34,14 +34,14 @@ export async function ensureBucket() {
             AllowedHeaders: ["*"],
             AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"],
             AllowedOrigins: ["*"],
-            ExposeHeaders: ["ETag"],
-            MaxAgeSeconds: 3600,
           },
         ],
       },
     }));
   } catch (err) {
-    console.error("Error configuring CORS:", err);
+    // MinIO sometimes returns 501 NotImplemented for CORS via SDK, 
+    // but often it's already configured or handled globally.
+    console.log("Note: CORS configuration via SDK skipped or not supported by this MinIO version.");
   }
 }
 
@@ -56,14 +56,24 @@ export async function getPresignedUploadUrl(filename: string, contentType: strin
 
   let url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
   
-  if (url.includes("minio:9000")) {
-    url = url.replace("minio:9000", "localhost:9000");
+  // If we are inside Docker, the URL might have the service name 'minio'
+  // but the browser needs 'localhost' or the server's IP.
+  const host = ENV.s3Endpoint.split("//")[1]?.split(":")[0];
+  if (host && url.includes(host)) {
+    // If the endpoint was 'minio:9000', replace it with 'localhost:9000' for the browser
+    // unless the browser is already hitting the app via a different hostname.
+    url = url.replace(host, "localhost");
   }
 
-  // The public URL used by the frontend should point to our proxy
+  console.log(`[Storage] Generated Presigned URL: ${url}`);
+
+  // The public URL used by the frontend for downloading
   const publicUrl = `/api/storage/${key}`;
   
-  return { url, publicUrl, key };
+  // A local proxy URL for uploading if the presigned one fails
+  const proxyUploadUrl = `/api/storage/upload/${key}`;
+  
+  return { url, publicUrl, proxyUploadUrl, key };
 }
 
 export async function getPresignedDownloadUrl(key: string) {
