@@ -9,15 +9,20 @@ import {
   createFicha,
   deleteFicha,
   getFichaById,
+  getHotelsByFichaId,
+  getLogisticsByFichaId,
   getProfessionalsByFichaId,
   getScheduleByFichaId,
   listFichas,
+  replaceHotels,
+  replaceLogistics,
   replaceProfessionals,
   replaceScheduleItems,
   upsertUser,
   updateFicha,
 } from "./db";
-import { storageGetPresignedPutUrl } from "./storage";
+import { getPresignedUploadUrl } from "./storage";
+import { saveSuggestions, getAllSuggestions } from "./redis";
 
 // ─── Admin Middleware ─────────────────────────────────────────────────────────
 
@@ -41,6 +46,22 @@ const professionalSchema = z.object({
   contact: z.string().max(255),
 });
 
+const hotelSchema = z.object({
+  name: z.string().max(255),
+  address: z.string(),
+  contact: z.string().max(255),
+  contactPerson: z.string().max(255),
+  localContact: z.string().max(255),
+  gpsLink: z.string(),
+  roomListPdfs: z.string().nullable().optional(),
+});
+
+const logisticsSchema = z.object({
+  role: z.string().max(128),
+  name: z.string().max(255),
+  contact: z.string().max(255),
+});
+
 const fichaInputSchema = z.object({
   eventName: z.string().min(1).max(255),
   eventDate: z.string().max(32),
@@ -49,21 +70,22 @@ const fichaInputSchema = z.object({
   stateCity: z.string().max(255).optional().default(""),
   location: z.string().max(255),
   address: z.string().optional().default(""),
+  gpsLink: z.string().optional().default(""),
   localProducerName: z.string().max(255).optional().default(""),
   localProducerContact: z.string().max(255).optional().default(""),
-  hotelName: z.string().max(255).optional().default(""),
-  hotelAddress: z.string().optional().default(""),
-  hotelContact: z.string().max(255).optional().default(""),
   status: z.enum(["draft", "published"]).optional().default("draft"),
   scheduleItems: z.array(scheduleItemSchema),
   professionals: z.array(professionalSchema),
+  hotels: z.array(hotelSchema).optional().default([]),
+  logistics: z.array(logisticsSchema).optional().default([]),
 });
 
 // ─── Ficha Router ─────────────────────────────────────────────────────────────
 
 const fichaRouter = router({
-  list: protectedProcedure.query(async () => {
-    return listFichas();
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const isAdmin = ctx.user.role === "admin";
+    return listFichas(isAdmin);
   }),
 
   getById: protectedProcedure
@@ -71,11 +93,13 @@ const fichaRouter = router({
     .query(async ({ input }) => {
       const ficha = await getFichaById(input.id);
       if (!ficha) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha Técnica não encontrada." });
-      const [schedule, profs] = await Promise.all([
+      const [schedule, profs, htls, logis] = await Promise.all([
         getScheduleByFichaId(input.id),
         getProfessionalsByFichaId(input.id),
+        getHotelsByFichaId(input.id),
+        getLogisticsByFichaId(input.id),
       ]);
-      return { ...ficha, scheduleItems: schedule, professionals: profs };
+      return { ...ficha, scheduleItems: schedule, professionals: profs, hotels: htls, logistics: logis };
     }),
 
   create: adminProcedure
@@ -89,16 +113,19 @@ const fichaRouter = router({
         stateCity: input.stateCity,
         location: input.location,
         address: input.address,
+        gpsLink: input.gpsLink,
         localProducerName: input.localProducerName,
         localProducerContact: input.localProducerContact,
-        hotelName: input.hotelName,
-        hotelAddress: input.hotelAddress,
-        hotelContact: input.hotelContact,
         status: input.status,
         createdByOpenId: ctx.user.openId,
       });
-      await replaceScheduleItems(fichaId, input.scheduleItems);
-      await replaceProfessionals(fichaId, input.professionals);
+      await Promise.all([
+        replaceScheduleItems(fichaId, input.scheduleItems),
+        replaceProfessionals(fichaId, input.professionals),
+        replaceHotels(fichaId, input.hotels),
+        replaceLogistics(fichaId, input.logistics),
+      ]);
+      await saveSuggestions(input);
       return { id: fichaId };
     }),
 
@@ -115,15 +142,18 @@ const fichaRouter = router({
         stateCity: input.data.stateCity,
         location: input.data.location,
         address: input.data.address,
+        gpsLink: input.data.gpsLink,
         localProducerName: input.data.localProducerName,
         localProducerContact: input.data.localProducerContact,
-        hotelName: input.data.hotelName,
-        hotelAddress: input.data.hotelAddress,
-        hotelContact: input.data.hotelContact,
         status: input.data.status,
       });
-      await replaceScheduleItems(input.id, input.data.scheduleItems);
-      await replaceProfessionals(input.id, input.data.professionals);
+      await Promise.all([
+        replaceScheduleItems(input.id, input.data.scheduleItems),
+        replaceProfessionals(input.id, input.data.professionals),
+        replaceHotels(input.id, input.data.hotels),
+        replaceLogistics(input.id, input.data.logistics),
+      ]);
+      await saveSuggestions(input.data);
       return { success: true };
     }),
 
@@ -135,6 +165,52 @@ const fichaRouter = router({
       await deleteFicha(input.id);
       return { success: true };
     }),
+
+  updatePdfs: adminProcedure
+    .input(z.object({ id: z.number(), pdfs: z.string().nullable() }))
+    .mutation(async ({ input }) => {
+      const existing = await getFichaById(input.id);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha Técnica não encontrada." });
+      await updateFicha(input.id, { attractionPdfs: input.pdfs });
+      return { success: true };
+    }),
+
+  getAllSuggestions: adminProcedure
+    .query(async () => {
+      return await getAllSuggestions();
+    }),
+
+  processAiCommand: adminProcedure
+    .input(z.object({ 
+      messages: z.array(z.object({ 
+        role: z.enum(["user", "assistant", "system"]), 
+        content: z.string() 
+      })), 
+      model: z.string().optional() 
+    }))
+    .mutation(async ({ input }) => {
+      const { processAiCommand } = await import("./ai");
+      return await processAiCommand(input.messages, input.model);
+    }),
+
+  listModels: adminProcedure.query(async () => {
+    const { listOllamaModels } = await import("./ai");
+    return await listOllamaModels();
+  }),
+
+  parseFichaText: adminProcedure
+    .input(z.object({ text: z.string() }))
+    .mutation(async ({ input }) => {
+      const { parseFichaTextWithAi } = await import("./ai");
+      return await parseFichaTextWithAi(input.text);
+    }),
+  
+  generateGpsLink: adminProcedure
+    .input(z.object({ location: z.string(), address: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const { suggestGpsLink } = await import("./ai");
+      return await suggestGpsLink(input.location, input.address || "");
+    }),
 });
  
  // ─── Storage Router ───────────────────────────────────────────────────────────
@@ -143,8 +219,8 @@ const fichaRouter = router({
    getUploadUrl: adminProcedure
      .input(z.object({ filename: z.string(), contentType: z.string() }))
      .mutation(async ({ input }) => {
-       const { url, key, publicUrl } = await storageGetPresignedPutUrl(input.filename, input.contentType);
-       return { url, key, publicUrl };
+       const { url, key, publicUrl, proxyUploadUrl } = await getPresignedUploadUrl(input.filename, input.contentType);
+       return { url, key, publicUrl, proxyUploadUrl };
      }),
  });
  

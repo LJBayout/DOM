@@ -8,6 +8,9 @@ import Dashboard from "./pages/Dashboard";
 import FichaForm from "./pages/FichaForm";
 import FichaView from "./pages/FichaView";
 import Login from "./pages/Login";
+import InstallGuide from "./pages/InstallGuide";
+
+import AdminPanel from "./pages/AdminPanel";
 
 function Router() {
   return (
@@ -15,9 +18,11 @@ function Router() {
       <Route path="/" component={Login} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/admin" component={AdminPanel} />
       <Route path="/ficha/nova" component={FichaForm} />
       <Route path="/ficha/:id/editar" component={FichaForm} />
       <Route path="/ficha/:id" component={FichaView} />
+      <Route path="/instalar" component={InstallGuide} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

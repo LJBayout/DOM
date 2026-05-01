@@ -33,19 +33,15 @@ export const fichasTecnicas = mysqlTable("fichas_tecnicas", {
   stateCity: varchar("stateCity", { length: 255 }).notNull().default(""),
   location: varchar("location", { length: 255 }).notNull().default(""),
   address: text("address").notNull().default(""),
+  gpsLink: text("gpsLink").notNull().default(""),
   localProducerName: varchar("localProducerName", { length: 255 }).notNull().default(""),
   localProducerContact: varchar("localProducerContact", { length: 255 }).notNull().default(""),
-  hotelName: varchar("hotelName", { length: 255 }).notNull().default(""),
-  hotelAddress: text("hotelAddress").notNull().default(""),
-  hotelContact: varchar("hotelContact", { length: 255 }).notNull().default(""),
-  hotelContactPerson: varchar("hotelContactPerson", { length: 255 }).notNull().default(""),
-  hotelLocalContact: varchar("hotelLocalContact", { length: 255 }).notNull().default(""),
-  hotelGpsLink: text("hotelGpsLink").notNull().default(""),
-  hotelRoomListPdfs: text("hotelRoomListPdfs"),
+
   status: mysqlEnum("status", ["draft", "published"]).default("draft").notNull(),
   createdByOpenId: varchar("createdByOpenId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deletedAt"),
 });
 
 export type FichaTecnica = typeof fichasTecnicas.$inferSelect;
@@ -77,3 +73,36 @@ export const professionals = mysqlTable("professionals", {
 
 export type Professional = typeof professionals.$inferSelect;
 export type InsertProfessional = typeof professionals.$inferInsert;
+
+// ─── Hotels ───────────────────────────────────────────────────────────────────
+
+export const hotels = mysqlTable("hotels", {
+  id: int("id").autoincrement().primaryKey(),
+  fichaId: int("fichaId").notNull(),
+  name: varchar("name", { length: 255 }).notNull().default(""),
+  address: text("address").notNull().default(""),
+  contact: varchar("contact", { length: 255 }).notNull().default(""),
+  contactPerson: varchar("contactPerson", { length: 255 }).notNull().default(""),
+  localContact: varchar("localContact", { length: 255 }).notNull().default(""),
+  gpsLink: text("gpsLink").notNull().default(""),
+  roomListPdfs: text("roomListPdfs"), // Store as JSON string or comma-separated
+  sortOrder: int("sortOrder").notNull().default(0),
+});
+
+export type Hotel = typeof hotels.$inferSelect;
+export type InsertHotel = typeof hotels.$inferInsert;
+
+// ─── Logistics ──────────────────────────────────────────────────────────────
+
+export const logistics = mysqlTable("logistics", {
+  id: int("id").autoincrement().primaryKey(),
+  fichaId: int("fichaId").notNull(),
+  role: varchar("role", { length: 128 }).notNull().default(""),
+  name: varchar("name", { length: 255 }).notNull().default(""),
+  contact: varchar("contact", { length: 255 }).notNull().default(""),
+  sortOrder: int("sortOrder").notNull().default(0),
+});
+
+export type LogisticsItem = typeof logistics.$inferSelect;
+export type InsertLogisticsItem = typeof logistics.$inferInsert;
+

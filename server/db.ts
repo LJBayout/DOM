@@ -1,11 +1,15 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   fichasTecnicas,
   InsertFichaTecnica,
+  InsertHotel,
+  InsertLogisticsItem,
   InsertProfessional,
   InsertScheduleItem,
   InsertUser,
+  hotels,
+  logistics,
   professionals,
   scheduleItems,
   users,
@@ -64,16 +68,20 @@ export async function getUserByOpenId(openId: string) {
 
 // ─── Fichas Técnicas ──────────────────────────────────────────────────────────
 
-export async function listFichas() {
+export async function listFichas(includeDeleted = false) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(fichasTecnicas).orderBy(asc(fichasTecnicas.createdAt));
+  const query = db.select().from(fichasTecnicas);
+  if (!includeDeleted) {
+    query.where(isNull(fichasTecnicas.deletedAt));
+  }
+  return query.orderBy(asc(fichasTecnicas.createdAt));
 }
 
 export async function getFichaById(id: number) {
   const db = await getDb();
   if (!db) return null;
-  const rows = await db.select().from(fichasTecnicas).where(eq(fichasTecnicas.id, id)).limit(1);
+  const rows = await db.select().from(fichasTecnicas).where(and(eq(fichasTecnicas.id, id), isNull(fichasTecnicas.deletedAt))).limit(1);
   return rows[0] ?? null;
 }
 
@@ -93,9 +101,8 @@ export async function updateFicha(id: number, data: Partial<InsertFichaTecnica>)
 export async function deleteFicha(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(scheduleItems).where(eq(scheduleItems.fichaId, id));
-  await db.delete(professionals).where(eq(professionals.fichaId, id));
-  await db.delete(fichasTecnicas).where(eq(fichasTecnicas.id, id));
+  // Soft delete: just set the deletedAt timestamp
+  await db.update(fichasTecnicas).set({ deletedAt: new Date() }).where(eq(fichasTecnicas.id, id));
 }
 
 // ─── Schedule Items ───────────────────────────────────────────────────────────
@@ -129,5 +136,39 @@ export async function replaceProfessionals(fichaId: number, items: Omit<InsertPr
   await db.delete(professionals).where(eq(professionals.fichaId, fichaId));
   if (items.length > 0) {
     await db.insert(professionals).values(items.map((item, i) => ({ ...item, fichaId, sortOrder: i })));
+  }
+}
+
+// ─── Hotels ───────────────────────────────────────────────────────────────────
+
+export async function getHotelsByFichaId(fichaId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(hotels).where(eq(hotels.fichaId, fichaId)).orderBy(asc(hotels.sortOrder));
+}
+
+export async function replaceHotels(fichaId: number, items: Omit<InsertHotel, "fichaId">[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(hotels).where(eq(hotels.fichaId, fichaId));
+  if (items.length > 0) {
+    await db.insert(hotels).values(items.map((item, i) => ({ ...item, fichaId, sortOrder: i })));
+  }
+}
+
+// ─── Logistics ──────────────────────────────────────────────────────────────
+
+export async function getLogisticsByFichaId(fichaId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(logistics).where(eq(logistics.fichaId, fichaId)).orderBy(asc(logistics.sortOrder));
+}
+
+export async function replaceLogistics(fichaId: number, items: Omit<InsertLogisticsItem, "fichaId">[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(logistics).where(eq(logistics.fichaId, fichaId));
+  if (items.length > 0) {
+    await db.insert(logistics).values(items.map((item, i) => ({ ...item, fichaId, sortOrder: i })));
   }
 }

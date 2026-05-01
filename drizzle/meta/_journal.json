@@ -15,6 +15,13 @@
       "when": 1777357101521,
       "tag": "0001_unknown_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1777438975628,
+      "tag": "0002_hard_trish_tilby",
+      "breakpoints": true
     }
   ]
 }
