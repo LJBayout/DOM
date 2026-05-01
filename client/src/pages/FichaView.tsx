@@ -140,34 +140,35 @@ export default function FichaView() {
   return (
     <div className="min-h-screen" style={{ background: "var(--cream)" }}>
       {/* Header */}
-      <header className="no-print" style={{ background: "var(--ink)", padding: "0 1.25rem" }}>
+      <header className="no-print" style={{ background: "var(--ink)", padding: "0 1.25rem", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "64px" }}>
           <button
             onClick={() => navigate("/dashboard")}
             style={{ background: "transparent", border: "none", fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem" }}
           >
             <ArrowLeft size={14} />
-            Dashboard
+            <span className="hidden sm:inline">Dashboard</span>
           </button>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <button
-              onClick={() => setShareModal(true)}
-              style={{ padding: "0.5rem 1rem", background: "transparent", color: "#25D366", border: "1px solid #25D366", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
-            >
-              <MessageCircle size={12} />
-              WhatsApp
-            </button>
-            <button
-              onClick={handleExportPDF}
-              style={{ padding: "0.5rem 1rem", background: "transparent", color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
-            >
-              <Printer size={12} />
-              Exportar PDF
-            </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div className="hidden sm:flex" style={{ gap: "0.75rem" }}>
+              <button
+                onClick={() => setShareModal(true)}
+                style={{ padding: "0.5rem 1rem", background: "transparent", color: "#25D366", border: "1px solid #25D366", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
+              >
+                <MessageCircle size={12} />
+                WhatsApp
+              </button>
+              <button
+                onClick={handleExportPDF}
+                style={{ padding: "0.5rem 1rem", background: "transparent", color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
+              >
+                <Printer size={12} />
+                PDF
+              </button>
+            </div>
             {isAdmin && (
               <button
-                className="no-print"
                 onClick={() => navigate(`/ficha/${fichaId}/editar`)}
                 style={{ padding: "0.5rem 1rem", background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
               >
@@ -362,8 +363,8 @@ export default function FichaView() {
               <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Ficha Técnica Operacional</p>
               <StatusBadge published={ficha.status === "published"} />
             </div>
-            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2.5rem, 10vw, 5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.04em", lineHeight: 0.9, marginBottom: "0.25rem" }}>{ficha.eventName}</h1>
-            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.5rem, 6vw, 3rem)", fontWeight: 400, fontStyle: "italic", color: "var(--gold)", letterSpacing: "-0.02em", lineHeight: 1, marginBottom: "2.5rem" }}>{ficha.attraction || "Evento DOM"}</h2>
+            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 10vw, 4.5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.04em", lineHeight: 0.95, marginBottom: "0.5rem", textTransform: "uppercase" }}>{ficha.eventName}</h1>
+            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.2rem, 6vw, 2.5rem)", fontWeight: 500, fontStyle: "italic", color: "var(--gold)", letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: "2.5rem" }}>{ficha.attraction || "Evento DOM"}</h2>
             <div style={{ height: "1px", background: "var(--rule)" }} />
           </div>
 
@@ -496,6 +497,35 @@ export default function FichaView() {
           </div>
         </div>
       )}
+
+      {/* Mobile Floating Action Bar */}
+      <div className="sm:hidden no-print" style={{ 
+        position: "fixed", 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        background: "var(--ink)", 
+        padding: "1rem 1.25rem", 
+        display: "flex", 
+        gap: "0.75rem", 
+        borderTop: "1px solid var(--gold)", 
+        zIndex: 100 
+      }}>
+        <button
+          onClick={() => setShareModal(true)}
+          style={{ flex: 1, padding: "0.8rem", background: "#25D366", color: "white", border: "none", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.75rem", fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+        >
+          <MessageCircle size={18} />
+          Enviar WP
+        </button>
+        <button
+          onClick={handleExportPDF}
+          style={{ padding: "0.8rem 1.2rem", background: "transparent", color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.75rem", fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+        >
+          <Printer size={18} />
+          PDF
+        </button>
+      </div>
     </div>
   );
 }

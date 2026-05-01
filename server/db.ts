@@ -68,10 +68,14 @@ export async function getUserByOpenId(openId: string) {
 
 // ─── Fichas Técnicas ──────────────────────────────────────────────────────────
 
-export async function listFichas() {
+export async function listFichas(includeDeleted = false) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(fichasTecnicas).where(isNull(fichasTecnicas.deletedAt)).orderBy(asc(fichasTecnicas.createdAt));
+  const query = db.select().from(fichasTecnicas);
+  if (!includeDeleted) {
+    query.where(isNull(fichasTecnicas.deletedAt));
+  }
+  return query.orderBy(asc(fichasTecnicas.createdAt));
 }
 
 export async function getFichaById(id: number) {

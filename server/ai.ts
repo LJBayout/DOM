@@ -266,40 +266,41 @@ export async function parseFichaTextWithAi(text: string, model?: string) {
   const resolvedModel = await resolveModel(model);
   
   const systemPrompt = `
-Você é o DOM AI, especialista em extração de dados de eventos.
-O usuário fornecerá um texto bruto (ex: um checklist, mensagem do whatsapp).
-Sua tarefa é extrair as informações e preencher OBRIGATORIAMENTE este JSON. Retorne apenas o JSON.
+Você é o DOM AI, especialista sênior em extração de dados logísticos para eventos.
+Sua tarefa é ler mensagens de WhatsApp, checklists e e-mails e extrair informações para uma ficha técnica.
 
+FORMATO OBRIGATÓRIO (JSON APENAS):
 {
-  "eventName": "",
-  "eventDate": "",
-  "location": "",
-  "address": "",
-  "attraction": "",
-  "localProducerName": "",
-  "localProducerContact": "",
+  "eventName": "NOME DO EVENTO (EM MAIÚSCULAS)",
+  "eventDate": "YYYY-MM-DD",
+  "location": "NOME DO LOCAL/VENUE",
+  "address": "ENDEREÇO COMPLETO",
+  "attraction": "NOME DO ARTISTA/BANDA PRINCIPAL",
+  "localProducerName": "NOME DO PRODUTOR LOCAL",
+  "localProducerContact": "TELEFONE DO PRODUTOR LOCAL",
   "professionals": [
-    { "name": "", "role": "", "contact": "" }
+    { "name": "NOME", "role": "FUNÇÃO (SOM, LUZ, LED, CAMARIM, GERADOR, MOTORISTA)", "contact": "TELEFONE" }
   ],
   "hotels": [
-    { "name": "", "address": "", "contact": "", "contactPerson": "", "localContact": "", "gpsLink": "" }
+    { "name": "NOME HOTEL", "address": "ENDEREÇO", "contact": "TEL RECEPÇÃO", "contactPerson": "NOME CONTATO", "localContact": "CEL CONTATO", "gpsLink": "" }
   ],
   "logistics": [
-    { "role": "", "name": "", "contact": "" }
+    { "role": "CARGO (CARREGADORES, TRANSPORTE, SEGURANÇA)", "name": "NOME", "contact": "TELEFONE" }
   ],
   "scheduleItems": [
-    { "time": "HH:MM", "activity": "" }
+    { "time": "HH:MM", "activity": "DESCRIÇÃO DA ATIVIDADE" }
   ]
 }
 
-Regras:
-1. Responda APENAS com o objeto JSON.
-2. Não invente dados. Se não achar algo, deixe string vazia "" ou array vazio [].
-3. Categorize a equipe corretamente:
-   - "Som, Luz, Led, Camarim, Gerador" -> professionals
-   - "Carregadores, Motoristas, Transporte" -> logistics
-   - "Produtor local" -> localProducerName
-   - "Produtor responsável/auxiliar" -> professionals
+REGRAS CRÍTICAS:
+1. Responda APENAS com o JSON.
+2. Formate a DATA como YYYY-MM-DD. Se o texto disser "20 de Maio", assuma o ano corrente (2026).
+3. CATEGORIZAÇÃO DE EQUIPE:
+   - Profissionais Técnicos (Som, Luz, Produtor Executivo, Backline) -> "professionals"
+   - Equipe de Apoio (Carregadores, Motoristas, Seguranças) -> "logistics"
+   - Se houver "Produtor Local", coloque no campo "localProducerName".
+4. Se uma informação for "Produtor: João (22) 99999", extraia o nome "João" e o contato "(22) 99999".
+5. Se não encontrar uma informação, deixe string vazia "" ou array vazio [].
 `;
 
   try {

@@ -83,8 +83,9 @@ const fichaInputSchema = z.object({
 // ─── Ficha Router ─────────────────────────────────────────────────────────────
 
 const fichaRouter = router({
-  list: protectedProcedure.query(async () => {
-    return listFichas();
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const isAdmin = ctx.user.role === "admin";
+    return listFichas(isAdmin);
   }),
 
   getById: protectedProcedure
@@ -162,6 +163,15 @@ const fichaRouter = router({
       const existing = await getFichaById(input.id);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha Técnica não encontrada." });
       await deleteFicha(input.id);
+      return { success: true };
+    }),
+
+  updatePdfs: adminProcedure
+    .input(z.object({ id: z.number(), pdfs: z.string().nullable() }))
+    .mutation(async ({ input }) => {
+      const existing = await getFichaById(input.id);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha Técnica não encontrada." });
+      await updateFicha(input.id, { attractionPdfs: input.pdfs });
       return { success: true };
     }),
 
