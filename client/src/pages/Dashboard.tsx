@@ -190,6 +190,12 @@ export default function Dashboard() {
                         <MapPin size={14} color="var(--gold)" />
                         {ficha.location || "—"}
                       </span>
+                      {ficha.localProducerName && (
+                        <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", color: "var(--ink-mid)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <UserRound size={14} color="var(--gold)" />
+                          {ficha.localProducerName}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
