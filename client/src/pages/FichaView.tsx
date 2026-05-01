@@ -363,7 +363,7 @@ export default function FichaView() {
               <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Ficha Técnica Operacional</p>
               <StatusBadge published={ficha.status === "published"} />
             </div>
-            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 10vw, 4.5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.04em", lineHeight: 0.95, marginBottom: "0.5rem", textTransform: "uppercase" }}>{ficha.eventName}</h1>
+            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 10vw, 4.5rem)", fontWeight: 800, color: "var(--foreground)", letterSpacing: "-0.04em", lineHeight: 0.95, marginBottom: "0.5rem", textTransform: "uppercase" }}>{ficha.eventName}</h1>
             <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.2rem, 6vw, 2.5rem)", fontWeight: 500, fontStyle: "italic", color: "var(--gold)", letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: "2.5rem" }}>{ficha.attraction || "Evento DOM"}</h2>
             <div style={{ height: "1px", background: "var(--rule)" }} />
           </div>
@@ -376,7 +376,7 @@ export default function FichaView() {
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Nome do Local / Venue</FieldLabel>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <p style={{ fontFamily: "var(--font-sans)", fontSize: "1.1rem", fontWeight: 600, color: "var(--ink)" }}>
+                  <p style={{ fontFamily: "var(--font-sans)", fontSize: "1.1rem", fontWeight: 600, color: "var(--foreground)" }}>
                     {ficha.location || "—"}
                   </p>
                   {ficha.gpsLink && (
@@ -397,7 +397,7 @@ export default function FichaView() {
               {ficha.scheduleItems.map((item) => (
                 <div key={item.id} style={{ display: "flex", gap: "1.25rem", padding: "1rem 0", borderBottom: "1px solid var(--rule)" }}>
                   <div style={{ minWidth: "70px", color: "var(--gold)", fontWeight: 700 }}>{formatTime(item.time)}</div>
-                  <div>{item.activity}</div>
+                  <div style={{ color: "var(--foreground)" }}>{item.activity}</div>
                 </div>
               ))}
             </div>
@@ -407,9 +407,9 @@ export default function FichaView() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "1.25rem" }}>
               {ficha.professionals.map((prof) => (
                 <div key={prof.id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.25rem" }}>
-                  <p style={{ fontWeight: 700, color: "var(--ink)", marginBottom: "0.35rem" }}>{prof.name || "—"}</p>
+                  <p style={{ fontWeight: 700, color: "var(--foreground)", marginBottom: "0.35rem" }}>{prof.name || "—"}</p>
                   <div style={{ fontSize: "0.65rem", color: "var(--gold)", fontWeight: 700, textTransform: "uppercase" }}>{prof.role || "—"}</div>
-                  <div style={{ fontSize: "0.8rem", color: "var(--ink-mid)" }}>{prof.contact || "—"}</div>
+                  <div style={{ fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.6)" }}>{prof.contact || "—"}</div>
                 </div>
               ))}
             </div>
@@ -421,14 +421,14 @@ export default function FichaView() {
                 <div key={hotel.id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.5rem", position: "relative" }}>
                   <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: "var(--gold)" }} />
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                    <h3 style={{ fontWeight: 700, margin: 0 }}>{hotel.name}</h3>
+                    <h3 style={{ fontWeight: 700, margin: 0, color: "var(--foreground)" }}>{hotel.name}</h3>
                     {hotel.gpsLink && (
                       <a href={hotel.gpsLink} target="_blank" rel="noreferrer" style={{ color: "var(--gold)", display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", textDecoration: "none" }}>
                         <Navigation size={12} /> Mapa
                       </a>
                     )}
                   </div>
-                  <p style={{ fontSize: "0.8rem", color: "var(--ink-mid)" }}>{hotel.address}</p>
+                  <p style={{ fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.6)" }}>{hotel.address}</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem", marginTop: "1rem" }}>
                     <ViewField label="Contato" value={hotel.contact || "—"} />
                     <ViewField label="Pessoa" value={hotel.contactPerson || "—"} />
@@ -438,9 +438,9 @@ export default function FichaView() {
             </div>
           </ViewSection>
 
-          <div style={{ borderTop: "2px solid var(--ink)", marginTop: "4rem", paddingTop: "2rem", textAlign: "center" }}>
-            <div style={{ fontWeight: 800, fontSize: "1.25rem" }}>DOM <span style={{ color: "var(--gold)", fontStyle: "italic" }}>PRODUÇÕES</span></div>
-            <p style={{ fontSize: "0.55rem", color: "var(--ink-faint)", marginTop: "0.5rem" }}>ID #{ficha.id} — {new Date().getFullYear()}</p>
+          <div style={{ borderTop: "2px solid var(--border)", marginTop: "4rem", paddingTop: "2rem", textAlign: "center" }}>
+            <div style={{ fontWeight: 800, fontSize: "1.25rem", color: "var(--foreground)" }}>DOM <span style={{ color: "var(--gold)", fontStyle: "italic" }}>PRODUÇÕES</span></div>
+            <p style={{ fontSize: "0.55rem", color: "rgba(255, 255, 255, 0.3)", marginTop: "0.5rem" }}>ID #{ficha.id} — {new Date().getFullYear()}</p>
           </div>
         </main>
       </div>
@@ -537,8 +537,8 @@ function StatusBadge({ published }: { published: boolean }) {
     <span style={{
       display: "inline-block",
       padding: "0.2rem 0.75rem",
-      background: published ? "var(--gold)" : "var(--cream-deeper)",
-      color: published ? "var(--ink)" : "var(--ink-light)",
+      background: published ? "var(--gold)" : "rgba(255, 255, 255, 0.05)",
+      color: published ? "var(--ink)" : "rgba(255, 255, 255, 0.6)",
       fontFamily: "var(--font-sans)",
       fontSize: "0.55rem",
       fontWeight: 700,
@@ -555,10 +555,10 @@ function ViewSection({ number, title, children, icon: Icon }: { number: string; 
   return (
     <div style={{ marginBottom: "clamp(3rem, 10vw, 4rem)" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "1rem", marginBottom: "1.25rem" }}>
-        <span style={{ fontFamily: "var(--font-serif)", fontSize: "2.5rem", fontWeight: 800, color: "var(--cream-deeper)", lineHeight: 1, letterSpacing: "-0.04em", userSelect: "none" }}>
+        <span style={{ fontFamily: "var(--font-serif)", fontSize: "2.5rem", fontWeight: 800, color: "rgba(212, 175, 55, 0.15)", lineHeight: 1, letterSpacing: "-0.04em", userSelect: "none" }}>
           {number}
         </span>
-        <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem", fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+        <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem", fontWeight: 700, color: "var(--foreground)", letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: "0.6rem" }}>
           {Icon ? <Icon size={18} style={{ color: "var(--gold)" }} /> : null}
           {title}
         </h2>
@@ -575,7 +575,7 @@ function ViewField({ label, value, wide }: { label: string; value: string; wide?
       <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.55rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "0.3rem", fontWeight: 700 }}>
         {label}
       </p>
-      <p style={{ fontFamily: "var(--font-sans)", fontSize: wide ? "1.1rem" : "0.9rem", fontWeight: wide ? 600 : 400, color: "var(--ink)", lineHeight: 1.4 }}>
+      <p style={{ fontFamily: "var(--font-sans)", fontSize: wide ? "1.1rem" : "0.9rem", fontWeight: wide ? 600 : 400, color: "var(--foreground)", lineHeight: 1.4 }}>
         {value}
       </p>
     </div>

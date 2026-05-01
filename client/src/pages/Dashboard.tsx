@@ -119,9 +119,19 @@ export default function Dashboard() {
               Produções e Eventos
             </span>
           </div>
-          <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", color: "var(--gold)", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.8 }}>
-            {isAdmin ? "Admin" : "Usuário"}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            {isAdmin && (
+              <button 
+                onClick={() => navigate("/admin")}
+                style={{ background: "rgba(212, 175, 55, 0.1)", border: "1px solid var(--gold)", color: "var(--gold)", padding: "0.3rem 0.6rem", borderRadius: "4px", fontSize: "0.55rem", fontWeight: 800, textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
+              >
+                Painel Admin
+              </button>
+            )}
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", color: "var(--gold)", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.8 }}>
+              {isAdmin ? "Admin" : "Usuário"}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -181,14 +191,14 @@ export default function Dashboard() {
           <div style={{ padding: "4rem 0", textAlign: "center", color: "var(--gold)", fontFamily: "var(--font-sans)", fontSize: "0.75rem", letterSpacing: "0.15em" }}>
             Carregando eventos...
           </div>
-        ) : !fichas || fichas.length === 0 ? (
+        ) : !fichas || fichas.filter(f => !f.deletedAt).length === 0 ? (
           <div style={{ padding: "4rem 0", textAlign: "center" }}>
             <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.25rem", color: "var(--foreground)", opacity: 0.7, marginBottom: "0.75rem" }}>
-              Nenhum evento encontrado.
+              Nenhum evento ativo encontrado.
             </p>
             {isAdmin && (
               <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.8rem", color: "var(--ink-faint)" }}>
-                Crie o primeiro evento para começar.
+                Consulte o Painel Admin para ver eventos desativados.
               </p>
             )}
           </div>
@@ -196,13 +206,13 @@ export default function Dashboard() {
           <>
             {/* Responsive Cards (Mobile & Desktop) */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
-              {fichas.map((ficha) => (
+              {fichas.filter(ficha => !ficha.deletedAt).map((ficha) => (
                 <div
                   key={ficha.id}
                   onClick={() => navigate(`/ficha/${ficha.id}`)}
                   style={{
                     background: "var(--card)",
-                    border: ficha.deletedAt ? "1px dashed var(--destructive)" : "1px solid var(--border)",
+                    border: "1px solid var(--border)",
                     borderRadius: "var(--radius)",
                     padding: "1.25rem",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
@@ -211,7 +221,6 @@ export default function Dashboard() {
                     justifyContent: "space-between",
                     cursor: "pointer",
                     position: "relative",
-                    opacity: ficha.deletedAt ? 0.6 : 1,
                     transition: "transform 0.2s"
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-4px)"}
@@ -223,7 +232,6 @@ export default function Dashboard() {
                         {ficha.eventName}
                       </p>
                       <div style={{ display: "flex", gap: "0.4rem" }}>
-                        {ficha.deletedAt && <StatusBadge status="deleted" />}
                         <StatusBadge status={ficha.status} />
                       </div>
                     </div>
