@@ -84,10 +84,10 @@ export default function FichaView() {
     try {
       const cleanNumber = phoneNumber.replace(/\D/g, "");
       const finalNumber = cleanNumber.startsWith("55") ? cleanNumber : `55${cleanNumber}`;
-      
+
       const filename = `Ficha_${ficha.eventName.replace(/\s+/g, '_')}_${type}.${type}`;
       const contentType = type === "pdf" ? "application/pdf" : "image/jpeg";
-      
+
       const { publicUrl, proxyUploadUrl } = await getUploadUrlMutation.mutateAsync({
         filename,
         contentType
@@ -126,7 +126,7 @@ export default function FichaView() {
 
       const fullUrl = window.location.origin + publicUrl;
       const message = encodeURIComponent(`Olá! Segue a Ficha Técnica: ${ficha.eventName}\n\n📄 Visualizar ${type.toUpperCase()}:\n${fullUrl}`);
-      
+
       window.open(`https://wa.me/${finalNumber}?text=${message}`, "_blank");
       setShareModal(false);
     } catch (error) {
@@ -181,21 +181,21 @@ export default function FichaView() {
 
       {/* High-Fidelity PDF Pattern (Print Only) */}
       <div className="print-only">
-        <div id="ficha-print-content" style={{ 
-          background: "white", 
-          color: "#111", 
-          minHeight: "297mm", 
-          padding: "15mm 15mm", 
-          fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", 
+        <div id="ficha-print-content" style={{
+          background: "white",
+          color: "#111",
+          minHeight: "297mm",
+          padding: "15mm 15mm",
+          fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
           position: "relative",
           overflow: "hidden"
         }}>
           {/* Watermark Background */}
-          <div style={{ 
-            position: "absolute", 
-            top: "50%", left: "50%", 
+          <div style={{
+            position: "absolute",
+            top: "50%", left: "50%",
             transform: "translate(-50%, -50%) rotate(-30deg)",
-            opacity: 0.03, 
+            opacity: 0.03,
             zIndex: 0,
             fontSize: "150px",
             fontWeight: 900,
@@ -227,7 +227,7 @@ export default function FichaView() {
               <div style={{ background: "#f8f9fa", padding: "15px", borderRadius: "8px", border: "1px solid #eee" }}>
                 <p style={{ fontSize: "11px", color: "#666", textTransform: "uppercase", fontWeight: 700, margin: "0 0 5px 0" }}>Evento</p>
                 <p style={{ fontSize: "16px", fontWeight: 800, margin: "0 0 15px 0" }}>{ficha.eventName.toUpperCase()}</p>
-                
+
                 <p style={{ fontSize: "11px", color: "#666", textTransform: "uppercase", fontWeight: 700, margin: "0 0 5px 0" }}>Local / Venue</p>
                 <p style={{ fontSize: "14px", fontWeight: 600, margin: "0 0 5px 0" }}>{ficha.location.toUpperCase()}</p>
                 <p style={{ fontSize: "12px", margin: 0 }}>{ficha.address}</p>
@@ -296,13 +296,13 @@ export default function FichaView() {
                 <h3 style={{ fontSize: "16px", color: "#1a365d", borderBottom: "2px solid #1a365d", paddingBottom: "5px", marginBottom: "15px", textTransform: "uppercase" }}>Hospedagem</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" }}>
                   {ficha.hotels.map((hotel, i) => (
-                    <div key={i} style={{ 
-                      background: "#f8f9fa", 
-                      border: "1px solid #ddd", 
-                      borderLeft: "4px solid #d4af37", 
-                      borderRadius: "6px", 
-                      padding: "15px", 
-                      fontSize: "12px" 
+                    <div key={i} style={{
+                      background: "#f8f9fa",
+                      border: "1px solid #ddd",
+                      borderLeft: "4px solid #d4af37",
+                      borderRadius: "6px",
+                      padding: "15px",
+                      fontSize: "12px"
                     }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
                         <div>
@@ -313,7 +313,7 @@ export default function FichaView() {
                           HOTEL {i + 1}
                         </div>
                       </div>
-                      
+
                       <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "10px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #eee", paddingBottom: "4px" }}>
                           <span style={{ color: "#666" }}>RECEPÇÃO / TEL:</span>
@@ -341,7 +341,7 @@ export default function FichaView() {
                 </div>
               </div>
             )}
-            
+
             {/* Footer */}
             <div style={{ position: "absolute", bottom: "0", left: "0", right: "0", textAlign: "center", borderTop: "1px solid #eee", paddingTop: "10px", color: "#999", fontSize: "10px" }}>
               DOM PRODUÇÕES E EVENTOS — DOCUMENTO CONFIDENCIAL — GERADO EM {new Date().toLocaleDateString("pt-BR")}
@@ -354,7 +354,7 @@ export default function FichaView() {
       {/* Modern Dashboard View (Web UI) */}
       <div className="no-print">
         <main style={{ maxWidth: "900px", margin: "0 auto", padding: "4rem 1.25rem 8rem" }}>
-          
+
           {/* Cover / Masthead */}
           <div style={{ marginBottom: "5rem" }}>
             <div style={{ height: "2px", background: "var(--ink)", marginBottom: "1.5rem", borderRadius: "2px" }} />
@@ -455,21 +455,21 @@ export default function FichaView() {
               <h2 style={{ fontFamily: "var(--font-serif)", color: "white", fontSize: "1.5rem", margin: 0, fontWeight: 800 }}>Compartilhar</h2>
             </div>
             <p style={{ fontFamily: "var(--font-sans)", color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", marginBottom: "2rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Envie a ficha técnica via WhatsApp</p>
-            
+
             <div style={{ marginBottom: "2rem" }}>
               <label style={{ display: "block", color: "var(--gold)", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", marginBottom: "0.5rem", letterSpacing: "0.1em" }}>Número do WhatsApp (com DDD)</label>
-              <input 
+              <input
                 autoFocus
-                type="text" 
+                type="text"
                 placeholder="Ex: 22 992630265"
-                value={phoneNumber} 
+                value={phoneNumber}
                 onChange={e => setPhoneNumber(e.target.value)}
-                style={{ width: "100%", padding: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", color: "white", fontFamily: "var(--font-sans)", fontSize: "1rem" }} 
+                style={{ width: "100%", padding: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", color: "white", fontFamily: "var(--font-sans)", fontSize: "1rem" }}
               />
             </div>
-            
+
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <button 
+              <button
                 type="button"
                 disabled={isSharing}
                 onClick={() => handleWhatsAppShare("pdf")}
@@ -477,7 +477,7 @@ export default function FichaView() {
               >
                 {isSharing ? "Gerando..." : <><Download size={18} /> Enviar como PDF</>}
               </button>
-              <button 
+              <button
                 type="button"
                 disabled={isSharing}
                 onClick={() => handleWhatsAppShare("jpg")}
@@ -485,8 +485,8 @@ export default function FichaView() {
               >
                 {isSharing ? "Gerando..." : <><ImageIcon size={18} /> Enviar como Foto (JPG)</>}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShareModal(false)}
                 style={{ width: "100%", marginTop: "0.5rem", padding: "0.8rem", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline" }}
               >
