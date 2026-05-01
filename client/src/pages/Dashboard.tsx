@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, Eye, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect } from "react";
+import { CalendarDays, Eye, MapPin, Pencil, Plus, Trash2, FileText, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { AiAssistant } from "@/components/AiAssistant";
@@ -20,6 +20,11 @@ function formatDate(dateStr: string) {
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const [, navigate] = useLocation();
+  const [ridersModal, setRidersModal] = useState<{ open: boolean; eventName: string; pdfs: any[] }>({
+    open: false,
+    eventName: "",
+    pdfs: [],
+  });
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
@@ -42,6 +47,15 @@ export default function Dashboard() {
   const handleDelete = (id: number, name: string) => {
     if (!confirm(`Excluir a ficha "${name}"? Esta ação não pode ser desfeita.`)) return;
     deleteMutation.mutate({ id });
+  };
+
+  const openRiders = (name: string, pdfsStr: string | null) => {
+    try {
+      const pdfs = pdfsStr ? JSON.parse(pdfsStr) : [];
+      setRidersModal({ open: true, eventName: name, pdfs });
+    } catch (e) {
+      setRidersModal({ open: true, eventName: name, pdfs: [] });
+    }
   };
 
   if (authLoading || !user) {
@@ -180,6 +194,7 @@ export default function Dashboard() {
                   </div>
                   <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
                     <ActionBtn onClick={() => navigate(`/ficha/${ficha.id}`)} icon={Eye} label="Ver" />
+                    <ActionBtn onClick={() => openRiders(ficha.eventName, ficha.attractionPdfs)} icon={FileText} label="Riders" />
                     {isAdmin && (
                       <>
                         <ActionBtn onClick={() => navigate(`/ficha/${ficha.id}/editar`)} icon={Pencil} label="Editar" />
@@ -199,6 +214,64 @@ export default function Dashboard() {
           </>
         )}
       </main>
+
+      {/* Riders Modal */}
+      {ridersModal.open && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", itemsCenter: "center", justifyContent: "center", zIndex: 100, padding: "1.25rem" }}>
+          <div style={{ background: "var(--cream)", width: "100%", maxWidth: "500px", borderRadius: "var(--radius)", overflow: "hidden", border: "1px solid var(--gold)", boxShadow: "0 20px 40px rgba(0,0,0,0.2)", animation: "fadeInUp 0.3s ease" }}>
+            <div style={{ background: "var(--ink)", padding: "1rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h3 style={{ fontFamily: "var(--font-serif)", color: "var(--gold)", margin: 0, fontSize: "1rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Riders & Mapas
+              </h3>
+              <button onClick={() => setRidersModal({ ...ridersModal, open: false })} style={{ background: "transparent", border: "none", color: "white", cursor: "pointer", opacity: 0.7 }}><X size={20} /></button>
+            </div>
+            <div style={{ padding: "1.5rem" }}>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.7rem", color: "var(--ink-light)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1rem", fontWeight: 700 }}>
+                {ridersModal.eventName}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                {ridersModal.pdfs.length > 0 ? ridersModal.pdfs.map((pdf, idx) => (
+                  <a
+                    key={idx}
+                    href={pdf.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      padding: "1rem",
+                      background: "white",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
+                      textDecoration: "none",
+                      color: "var(--ink)",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    <div style={{ background: "var(--gold)", color: "var(--ink)", padding: "0.5rem", borderRadius: "var(--radius-sm)" }}>
+                      <FileText size={18} />
+                    </div>
+                    <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.85rem", fontWeight: 600, flex: 1 }}>
+                      {pdf.name.toUpperCase()}
+                    </span>
+                  </a>
+                )) : (
+                  <div style={{ textAlign: "center", padding: "2rem 0", color: "var(--ink-faint)", fontFamily: "var(--font-sans)", fontSize: "0.85rem", fontStyle: "italic" }}>
+                    Nenhum rider ou mapa anexado a esta ficha.
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid var(--border)", background: "rgba(0,0,0,0.02)", textAlign: "right" }}>
+              <button onClick={() => setRidersModal({ ...ridersModal, open: false })} style={{ background: "var(--ink)", color: "var(--gold)", padding: "0.5rem 1rem", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase" }}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AiAssistant />
     </div>
   );
