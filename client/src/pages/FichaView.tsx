@@ -183,73 +183,137 @@ export default function FichaView() {
       <div className="print-only">
         <div id="ficha-print-content" style={{ 
           background: "white", 
-          color: "black", 
+          color: "#111", 
           minHeight: "297mm", 
-          padding: "10mm", 
-          fontFamily: "'Helvetica Condensed', 'Arial Narrow', sans-serif", 
+          padding: "15mm 15mm", 
+          fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", 
           position: "relative",
           overflow: "hidden"
         }}>
           {/* Watermark Background */}
           <div style={{ 
             position: "absolute", 
-            top: 0, left: 0, right: 0, bottom: 0, 
-            opacity: 0.05, 
+            top: "50%", left: "50%", 
+            transform: "translate(-50%, -50%) rotate(-30deg)",
+            opacity: 0.03, 
             zIndex: 0,
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "50px",
-            padding: "50px",
-            pointerEvents: "none"
+            fontSize: "150px",
+            fontWeight: 900,
+            pointerEvents: "none",
+            whiteSpace: "nowrap"
           }}>
-            {Array.from({ length: 24 }).map((_, i) => (
-              <div key={i} style={{ fontSize: "40px", fontWeight: 900, transform: "rotate(-30deg)" }}>DOM</div>
-            ))}
+            DOM PRODUÇÕES
           </div>
 
           <div style={{ position: "relative", zIndex: 1 }}>
-            <div style={{ background: "#1a365d", padding: "20px 30px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", borderBottom: "4px solid #1a365d" }}>
-              <h1 style={{ color: "white", margin: 0, fontSize: "42px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "-2px", fontFamily: "Impact, sans-serif" }}>
-                CHECKLIST {ficha.attraction ? ficha.attraction.toUpperCase() : "DOM"}
-              </h1>
-              <div style={{ background: "#2d3748", color: "white", width: "70px", height: "70px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: "28px", borderRadius: "8px" }}>AB</div>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "4px solid #1a365d", paddingBottom: "15px", marginBottom: "20px" }}>
+              <div>
+                <h1 style={{ color: "#1a365d", margin: 0, fontSize: "38px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "-1px" }}>
+                  FICHA TÉCNICA
+                </h1>
+                <h2 style={{ margin: "5px 0 0 0", fontSize: "20px", color: "#666", fontWeight: 600, textTransform: "uppercase" }}>
+                  {ficha.attraction ? ficha.attraction : "EVENTO DOM"}
+                </h2>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <p style={{ margin: 0, fontSize: "16px", fontWeight: 700 }}>{formatDate(ficha.eventDate)}</p>
+                <p style={{ margin: "5px 0 0 0", fontSize: "14px", color: "#666" }}>ID: #{ficha.id}</p>
+              </div>
             </div>
-            <div style={{ padding: "0 10px" }}>
-              <p style={{ fontWeight: 700, fontSize: "14px", marginBottom: "25px", borderBottom: "1px solid #ddd", paddingBottom: "5px", textTransform: "uppercase" }}>
-                {ficha.attraction ? ficha.attraction.toUpperCase() : "DOM"} – {ficha.stateCity || "LOCAL"} – {formatDate(ficha.eventDate)}
-              </p>
-              <div style={{ fontSize: "14px", lineHeight: "1.5" }}>
-                <p><strong>NOME DO EVENTO:</strong> {ficha.eventName.toUpperCase()}</p>
-                <p><strong>LOCAL DO EVENTO:</strong><br/>
-                  {ficha.gpsLink ? (
-                    <a href={ficha.gpsLink} target="_blank" rel="noreferrer" style={{ color: "inherit", textDecoration: "none" }}>
-                      ({ficha.location.toUpperCase()}) 📍
-                    </a>
-                  ) : (
-                    `(${ficha.location.toUpperCase()})`
-                  )}
-                  <br/> {ficha.address.toUpperCase()}
-                </p>
-                <div style={{ marginTop: "20px" }}>
-                  <p><strong>PRODUTOR LOCAL:</strong> {ficha.localProducerName?.toUpperCase() || "—"} (DOM) TEL: {ficha.localProducerContact || "—"}</p>
-                  <p><strong>PRODUTOR RESPONSÁVEL:</strong> GUSTAVO BAYOUT (DOM) TEL: 22 99263-0265</p>
-                  <p><strong>PRODUTOR AUXILIAR:</strong> LUCAS SANTIAGO (DOM) TEL: 21 97320-4056</p>
+
+            {/* Event Info Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
+              <div style={{ background: "#f8f9fa", padding: "15px", borderRadius: "8px", border: "1px solid #eee" }}>
+                <p style={{ fontSize: "11px", color: "#666", textTransform: "uppercase", fontWeight: 700, margin: "0 0 5px 0" }}>Evento</p>
+                <p style={{ fontSize: "16px", fontWeight: 800, margin: "0 0 15px 0" }}>{ficha.eventName.toUpperCase()}</p>
+                
+                <p style={{ fontSize: "11px", color: "#666", textTransform: "uppercase", fontWeight: 700, margin: "0 0 5px 0" }}>Local / Venue</p>
+                <p style={{ fontSize: "14px", fontWeight: 600, margin: "0 0 5px 0" }}>{ficha.location.toUpperCase()}</p>
+                <p style={{ fontSize: "12px", margin: 0 }}>{ficha.address}</p>
+                <p style={{ fontSize: "12px", margin: "5px 0 0 0", color: "#666" }}>{ficha.stateCity}</p>
+              </div>
+
+              <div style={{ background: "#f8f9fa", padding: "15px", borderRadius: "8px", border: "1px solid #eee" }}>
+                <p style={{ fontSize: "11px", color: "#666", textTransform: "uppercase", fontWeight: 700, margin: "0 0 10px 0" }}>Contatos da Produção</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div>
+                    <p style={{ fontSize: "12px", fontWeight: 700, margin: "0 0 2px 0" }}>PRODUTOR RESPONSÁVEL</p>
+                    <p style={{ fontSize: "12px", margin: 0 }}>GUSTAVO BAYOUT (DOM) — 22 99263-0265</p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "12px", fontWeight: 700, margin: "0 0 2px 0" }}>PRODUTOR AUXILIAR</p>
+                    <p style={{ fontSize: "12px", margin: 0 }}>LUCAS SANTIAGO (DOM) — 21 97320-4056</p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "12px", fontWeight: 700, margin: "0 0 2px 0" }}>PRODUTOR LOCAL</p>
+                    <p style={{ fontSize: "12px", margin: 0 }}>{ficha.localProducerName?.toUpperCase() || "—"} — {ficha.localProducerContact || "—"}</p>
+                  </div>
                 </div>
-                <div style={{ marginTop: "20px" }}>
+              </div>
+            </div>
+
+            {/* Schedule & Team Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "30px", marginBottom: "30px" }}>
+              {/* Cronograma */}
+              <div>
+                <h3 style={{ fontSize: "16px", color: "#1a365d", borderBottom: "2px solid #1a365d", paddingBottom: "5px", marginBottom: "15px", textTransform: "uppercase" }}>Cronograma</h3>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                  <tbody>
+                    {ficha.scheduleItems.map((item, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
+                        <td style={{ padding: "8px 0", fontWeight: 800, color: "#1a365d", width: "80px" }}>{formatTime(item.time)}</td>
+                        <td style={{ padding: "8px 0", textTransform: "uppercase" }}>{item.activity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Equipe / Logística */}
+              <div>
+                <h3 style={{ fontSize: "16px", color: "#1a365d", borderBottom: "2px solid #1a365d", paddingBottom: "5px", marginBottom: "15px", textTransform: "uppercase" }}>Equipe Técnica</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "12px" }}>
                   {ficha.professionals.map((prof, i) => (
-                    <p key={i}><strong>{prof.role.toUpperCase()}:</strong> {prof.name.toUpperCase()} {prof.contact ? `TEL: ${prof.contact}` : ""}</p>
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f0f0f0", paddingBottom: "4px" }}>
+                      <span><strong>{prof.role.toUpperCase()}:</strong> {prof.name.toUpperCase()}</span>
+                      <span style={{ color: "#666" }}>{prof.contact}</span>
+                    </div>
                   ))}
                   {ficha.logistics.map((log, i) => (
-                    <p key={i}><strong>{log.role.toUpperCase()}:</strong> {log.name.toUpperCase()} {log.contact ? `TEL: ${log.contact}` : ""}</p>
-                  ))}
-                </div>
-                <div style={{ marginTop: "30px" }}>
-                  {ficha.scheduleItems.map((item, i) => (
-                    <p key={i}><strong>HORÁRIO {item.activity.toUpperCase()}:</strong> {formatTime(item.time)}</p>
+                    <div key={`log-${i}`} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f0f0f0", paddingBottom: "4px" }}>
+                      <span><strong>{log.role.toUpperCase()}:</strong> {log.name.toUpperCase()}</span>
+                      <span style={{ color: "#666" }}>{log.contact}</span>
+                    </div>
                   ))}
                 </div>
               </div>
             </div>
+
+            {/* Hospedagem */}
+            {ficha.hotels && ficha.hotels.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: "16px", color: "#1a365d", borderBottom: "2px solid #1a365d", paddingBottom: "5px", marginBottom: "15px", textTransform: "uppercase" }}>Hospedagem</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "15px" }}>
+                  {ficha.hotels.map((hotel, i) => (
+                    <div key={i} style={{ border: "1px solid #ddd", borderRadius: "6px", padding: "10px 15px", fontSize: "12px" }}>
+                      <p style={{ margin: "0 0 5px 0", fontWeight: 800, fontSize: "14px" }}>{hotel.name.toUpperCase()}</p>
+                      <p style={{ margin: "0 0 8px 0", color: "#555" }}>{hotel.address}</p>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span><strong>RECEPÇÃO:</strong> {hotel.contact || "—"}</span>
+                        <span><strong>CONTATO:</strong> {hotel.contactPerson || "—"} ({hotel.localContact || "—"})</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Footer */}
+            <div style={{ position: "absolute", bottom: "0", left: "0", right: "0", textAlign: "center", borderTop: "1px solid #eee", paddingTop: "10px", color: "#999", fontSize: "10px" }}>
+              DOM PRODUÇÕES E EVENTOS — DOCUMENTO CONFIDENCIAL — GERADO EM {new Date().toLocaleDateString("pt-BR")}
+            </div>
+
           </div>
         </div>
       </div>
