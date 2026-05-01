@@ -321,7 +321,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--cream)" }}>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
       {/* Header */}
       <header style={{ background: "var(--ink)", padding: "0 1.25rem" }}>
         <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "64px" }}>
@@ -349,7 +349,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
               Formulário Técnico
             </p>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 7vw, 3.5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.03em", lineHeight: 1 }}>
+              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 7vw, 3.5rem)", fontWeight: 800, color: "var(--foreground)", letterSpacing: "-0.03em", lineHeight: 1 }}>
                 Dados da Operação
               </h1>
               <button 
@@ -363,7 +363,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
             {showMagicInput && (
                <div style={{ marginTop: '1.5rem', background: 'var(--card)', padding: '1.5rem', border: '1px solid var(--gold)', borderRadius: 'var(--radius)', animation: 'fadeIn 0.3s ease' }}>
-                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--ink)', marginBottom: '1rem', fontWeight: 600 }}>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--foreground)', marginBottom: '1rem', fontWeight: 600 }}>
                     Cole abaixo as mensagens do WhatsApp ou o texto do Checklist. O DOM AI vai ler e preencher todos os campos do formulário para você.
                   </p>
                   <textarea 
@@ -373,7 +373,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
                     style={{ ...inputStyle, minHeight: '150px', marginBottom: '1rem', resize: 'vertical' }} 
                   />
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                    <button type="button" onClick={() => setShowMagicInput(false)} style={{ background: 'transparent', color: 'var(--ink)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.75rem' }}>
+                    <button type="button" onClick={() => setShowMagicInput(false)} style={{ background: 'transparent', color: 'var(--foreground)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.75rem' }}>
                       Cancelar
                     </button>
                     <button 
@@ -827,14 +827,14 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
             <button
               type="button"
               onClick={() => navigate("/dashboard")}
-              style={{ flex: "1", minWidth: "140px", padding: "1rem", background: "transparent", color: "var(--ink)", border: "1px solid var(--rule)", borderRadius: "var(--radius)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}
+              style={{ flex: "1", minWidth: "140px", padding: "1rem", background: "transparent", color: "var(--foreground)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              style={{ flex: "1", minWidth: "200px", padding: "1rem", background: "var(--ink)", color: "var(--gold)", border: "none", borderRadius: "var(--radius)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: isPending ? "not-allowed" : "pointer", opacity: isPending ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}
+              style={{ flex: "1", minWidth: "200px", padding: "1rem", background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: "var(--radius)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: isPending ? "not-allowed" : "pointer", opacity: isPending ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", boxShadow: "0 4px 12px rgba(212, 175, 55, 0.3)" }}
             >
               {isPending ? "Salvando..." : <><Save size={16} /> {isEditing ? "Salvar Alterações" : "Criar Ficha"}</>}
             </button>
@@ -918,15 +918,15 @@ function Section({ number, title, subtitle, children, icon: Icon }: {
   return (
     <div style={{ marginBottom: "clamp(3rem, 10vw, 4rem)" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "1.25rem", marginBottom: "1.5rem" }}>
-        <span style={{ fontFamily: "var(--font-serif)", fontSize: "2.5rem", fontWeight: 800, color: "var(--cream-deeper)", lineHeight: 1, letterSpacing: "-0.04em", userSelect: "none" }}>
+        <span style={{ fontFamily: "var(--font-serif)", fontSize: "2.5rem", fontWeight: 800, color: "rgba(255,255,255,0.05)", lineHeight: 1, letterSpacing: "-0.04em", userSelect: "none" }}>
           {number}
         </span>
         <div>
-          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem", fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.01em", marginBottom: "0.2rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem", fontWeight: 700, color: "var(--foreground)", letterSpacing: "-0.01em", marginBottom: "0.2rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             {Icon ? <Icon size={18} style={{ color: "var(--gold)" }} /> : null}
             {title}
           </h2>
-          <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.65rem", color: "var(--ink-light)", fontWeight: 400 }}>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.65rem", color: "rgba(255,255,255,0.6)", fontWeight: 400 }}>
             {subtitle}
           </p>
         </div>
@@ -980,12 +980,12 @@ function AddRowButton({ onClick, label }: { onClick: () => void; label: string }
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.75rem 1rem",
-  background: "var(--card)",
+  background: "rgba(255,255,255,0.03)",
   border: "1px solid var(--border)",
   borderRadius: "var(--radius-sm)",
   fontFamily: "var(--font-sans)",
   fontSize: "0.9rem",
-  color: "var(--ink)",
+  color: "#ffffff",
   outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s",
 };
