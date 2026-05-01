@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, Eye, MapPin, Pencil, Plus, Trash2, FileText, X } from "lucide-react";
+import { CalendarDays, Eye, MapPin, Pencil, Plus, Trash2, FileText, X, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
