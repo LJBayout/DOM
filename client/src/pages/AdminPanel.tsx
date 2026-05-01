@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, FileText, Download, Eye, Pencil, Trash2, Search, Filter } from "lucide-react";
+import { ArrowLeft, Eye, Pencil, Trash2, Search, Filter, Calendar, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -10,6 +10,14 @@ export default function AdminPanel() {
   const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "admin")) {
@@ -49,37 +57,37 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--background)", color: "var(--foreground)" }}>
-      <header style={{ background: "var(--ink)", borderBottom: "1px solid var(--border)", padding: "0 1.5rem" }}>
+      <header style={{ background: "var(--ink)", borderBottom: "1px solid var(--border)", padding: "0 1rem" }}>
         <div style={{ maxWidth: "1400px", margin: "0 auto", height: "70px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <button 
               onClick={() => navigate("/dashboard")}
               style={{ background: "transparent", border: "none", color: "var(--gold)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase" }}
             >
-              <ArrowLeft size={16} /> Dashboard
+              <ArrowLeft size={16} />
             </button>
-            <h1 style={{ fontSize: "1.25rem", fontWeight: 800, fontFamily: "var(--font-serif)", letterSpacing: "0.02em", margin: 0 }}>
-              PAINEL <span style={{ color: "var(--gold)" }}>ADMINISTRATIVO</span>
+            <h1 style={{ fontSize: isMobile ? "0.9rem" : "1.25rem", fontWeight: 800, fontFamily: "var(--font-serif)", letterSpacing: "0.02em", margin: 0 }}>
+              PAINEL <span style={{ color: "var(--gold)" }}>ADMIN</span>
             </h1>
           </div>
-          <div style={{ fontSize: "0.65rem", color: "var(--gold)", fontWeight: 800, textTransform: "uppercase", background: "rgba(212, 175, 55, 0.1)", padding: "0.4rem 0.8rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--gold)" }}>
-            Controle Total
+          <div style={{ fontSize: "0.55rem", color: "var(--gold)", fontWeight: 800, textTransform: "uppercase", background: "rgba(212, 175, 55, 0.1)", padding: "0.3rem 0.6rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--gold)" }}>
+            {isMobile ? "Admin" : "Controle Total"}
           </div>
         </div>
       </header>
 
-      <main style={{ maxWidth: "1400px", margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <main style={{ maxWidth: "1400px", margin: "0 auto", padding: isMobile ? "1rem" : "2rem 1.5rem" }}>
         
         {/* Filters Bar */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "2rem", background: "var(--card)", padding: "1.25rem", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
-          <div style={{ flex: 1, minWidth: "300px", position: "relative" }}>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "1rem", marginBottom: "2rem", background: "var(--card)", padding: "1rem", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+          <div style={{ flex: 1, position: "relative" }}>
             <Search size={18} style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--gold)" }} />
             <input 
               type="text" 
-              placeholder="Buscar por evento ou atração..."
+              placeholder="Buscar evento..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ width: "100%", padding: "0.75rem 1rem 0.75rem 3rem", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", color: "white", outline: "none", fontFamily: "var(--font-sans)" }}
+              style={{ width: "100%", padding: "0.75rem 1rem 0.75rem 3rem", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", color: "white", outline: "none", fontFamily: "var(--font-sans)", fontSize: "0.9rem" }}
             />
           </div>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
@@ -87,7 +95,7 @@ export default function AdminPanel() {
             <select 
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              style={{ padding: "0.75rem", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", color: "white", outline: "none" }}
+              style={{ flex: isMobile ? 1 : "initial", padding: "0.75rem", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", color: "white", outline: "none", fontSize: "0.9rem" }}
             >
               <option value="all">Todos Status</option>
               <option value="published">Publicados</option>
@@ -97,72 +105,116 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        {/* Data Table */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-              <thead>
-                <tr style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid var(--border)" }}>
-                  <th style={thStyle}>Evento</th>
-                  <th style={thStyle}>Data</th>
-                  <th style={thStyle}>Local</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Última Modif.</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredFichas.map(ficha => (
-                  <tr 
-                    key={ficha.id} 
-                    style={{ 
-                      borderBottom: "1px solid var(--border)", 
-                      transition: "background 0.2s",
-                      opacity: ficha.deletedAt ? 0.5 : 1,
-                    }}
-                  >
-                    <td style={tdStyle}>
-                      <div style={{ 
-                        fontWeight: 700, 
-                        color: "white",
-                        textDecoration: ficha.deletedAt ? "line-through" : "none"
-                      }}>
-                        {ficha.eventName}
-                      </div>
-                      <div style={{ fontSize: "0.7rem", color: "var(--gold)", textTransform: "uppercase" }}>{ficha.attraction || "Sem atração"}</div>
-                    </td>
-                    <td style={tdStyle}>{new Date(ficha.eventDate).toLocaleDateString("pt-BR")}</td>
-                    <td style={tdStyle}>{ficha.location}</td>
-                    <td style={tdStyle}>
-                      <StatusBadge status={ficha.deletedAt ? "deleted" : ficha.status} />
-                    </td>
-                    <td style={tdStyle}>{new Date(ficha.updatedAt || ficha.createdAt).toLocaleDateString("pt-BR")}</td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
-                      <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
-                        <IconButton icon={Eye} onClick={() => navigate(`/ficha/${ficha.id}`)} color="var(--gold)" />
-                        <IconButton icon={Pencil} onClick={() => navigate(`/ficha/${ficha.id}/editar`)} color="white" />
-                        {!ficha.deletedAt && (
-                          <IconButton 
-                            icon={Trash2} 
-                            onClick={() => {
-                              if(confirm(`Excluir ${ficha.eventName}?`)) deleteMutation.mutate({ id: ficha.id });
-                            }} 
-                            color="#ff4444" 
-                          />
-                        )}
-                      </div>
-                    </td>
+        {/* Desktop Data Table */}
+        {!isMobile && (
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid var(--border)" }}>
+                    <th style={thStyle}>Evento</th>
+                    <th style={thStyle}>Data</th>
+                    <th style={thStyle}>Local</th>
+                    <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {filteredFichas.length === 0 && (
-            <div style={{ padding: "4rem", textAlign: "center", color: "var(--muted-foreground)" }}>
-              Nenhum evento encontrado para os filtros aplicados.
+                </thead>
+                <tbody>
+                  {filteredFichas.map(ficha => (
+                    <tr 
+                      key={ficha.id} 
+                      style={{ 
+                        borderBottom: "1px solid var(--border)", 
+                        transition: "background 0.2s",
+                        opacity: ficha.deletedAt ? 0.5 : 1,
+                      }}
+                    >
+                      <td style={tdStyle}>
+                        <div style={{ fontWeight: 700, color: "white", textDecoration: ficha.deletedAt ? "line-through" : "none" }}>{ficha.eventName}</div>
+                        <div style={{ fontSize: "0.7rem", color: "var(--gold)", textTransform: "uppercase" }}>{ficha.attraction || "Sem atração"}</div>
+                      </td>
+                      <td style={tdStyle}>{new Date(ficha.eventDate).toLocaleDateString("pt-BR")}</td>
+                      <td style={tdStyle}>{ficha.location}</td>
+                      <td style={tdStyle}>
+                        <StatusBadge status={ficha.deletedAt ? "deleted" : ficha.status} />
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                          <IconButton icon={Eye} onClick={() => navigate(`/ficha/${ficha.id}`)} color="var(--gold)" />
+                          <IconButton icon={Pencil} onClick={() => navigate(`/ficha/${ficha.id}/editar`)} color="white" />
+                          {!ficha.deletedAt && (
+                            <IconButton 
+                              icon={Trash2} 
+                              onClick={() => {
+                                if(confirm(`Excluir ${ficha.eventName}?`)) deleteMutation.mutate({ id: ficha.id });
+                              }} 
+                              color="#ff4444" 
+                            />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Mobile Card View */}
+        {isMobile && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            {filteredFichas.map(ficha => (
+              <div 
+                key={ficha.id} 
+                style={{ 
+                  background: "var(--card)", 
+                  border: "1px solid var(--border)", 
+                  borderRadius: "var(--radius)", 
+                  padding: "1rem",
+                  opacity: ficha.deletedAt ? 0.5 : 1,
+                  position: "relative"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "white", textDecoration: ficha.deletedAt ? "line-through" : "none" }}>{ficha.eventName}</h3>
+                    <div style={{ fontSize: "0.65rem", color: "var(--gold)", textTransform: "uppercase", fontWeight: 700 }}>{ficha.attraction || "—"}</div>
+                  </div>
+                  <StatusBadge status={ficha.deletedAt ? "deleted" : ficha.status} />
+                </div>
+                
+                <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.75rem", color: "rgba(255,255,255,0.6)" }}>
+                    <Calendar size={12} color="var(--gold)" /> {new Date(ficha.eventDate).toLocaleDateString("pt-BR")}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.75rem", color: "rgba(255,255,255,0.6)" }}>
+                    <MapPin size={12} color="var(--gold)" /> {ficha.location?.substring(0, 15)}...
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "0.5rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
+                  <button onClick={() => navigate(`/ficha/${ficha.id}`)} style={mobileActionStyle}><Eye size={16} /> Ver</button>
+                  <button onClick={() => navigate(`/ficha/${ficha.id}/editar`)} style={mobileActionStyle}><Pencil size={16} /> Editar</button>
+                  {!ficha.deletedAt && (
+                    <button 
+                      onClick={() => { if(confirm(`Excluir ${ficha.eventName}?`)) deleteMutation.mutate({ id: ficha.id }); }} 
+                      style={{ ...mobileActionStyle, color: "#ff4444" }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {filteredFichas.length === 0 && (
+          <div style={{ padding: "4rem", textAlign: "center", color: "var(--muted-foreground)" }}>
+            Nenhum evento encontrado.
+          </div>
+        )}
       </main>
 
       <footer style={{ padding: "4rem 1.25rem 2rem", borderTop: "1px solid var(--border)", background: "var(--background)", textAlign: "center" }}>
@@ -194,6 +246,23 @@ const tdStyle: React.CSSProperties = {
   padding: "1rem 1.5rem",
   fontSize: "0.85rem",
   color: "rgba(255,255,255,0.7)"
+};
+
+const mobileActionStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "0.5rem",
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  color: "white",
+  fontSize: "0.7rem",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "0.4rem",
+  cursor: "pointer"
 };
 
 function StatusBadge({ status }: { status: string }) {
