@@ -202,4 +202,27 @@
       max-width: 1280px; /* Standard content width */
     }
   }
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    .print-only {
+      display: block !important;
+    }
+    body {
+      background: white !important;
+      color: black !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @page {
+      margin: 0;
+      size: auto;
+    }
+  }
+
+  .print-only {
+    display: none;
+  }
 }

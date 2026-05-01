@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Mail, MapPin, Phone, Plus, Trash2, UserRound, ArrowLeft, Save, X, Bed, Download } from "lucide-react";
+import { Mail, MapPin, Phone, Plus, Trash2, UserRound, ArrowLeft, Save, X, Bed, Download, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
@@ -65,6 +65,32 @@ export default function FichaForm() {
   // Multiple Hotels state
   const [hotels, setHotels] = useState<HotelRow[]>([{ ...DEFAULT_HOTEL }]);
   const [activeHotelTab, setActiveHotelTab] = useState(0);
+
+  // Magic Fill state
+  const [showMagicInput, setShowMagicInput] = useState(false);
+  const [magicText, setMagicText] = useState("");
+
+  const parseMutation = trpc.ficha.parseFichaText.useMutation({
+    onSuccess: (data) => {
+      if (data.eventName) setEventName(data.eventName);
+      if (data.eventDate) setEventDate(data.eventDate);
+      if (data.location) setLocation(data.location);
+      if (data.address) setAddress(data.address);
+      if (data.attraction) setAttraction(data.attraction);
+      if (data.localProducerName) setLocalProducerName(data.localProducerName);
+      if (data.localProducerContact) setLocalProducerContact(data.localProducerContact);
+      
+      if (data.professionals && data.professionals.length > 0) setProfs(data.professionals);
+      if (data.hotels && data.hotels.length > 0) setHotels(data.hotels.map((h: Partial<HotelRow>) => ({ ...DEFAULT_HOTEL, ...h })));
+      if (data.logistics && data.logistics.length > 0) setLogisticsRows(data.logistics);
+      if (data.scheduleItems && data.scheduleItems.length > 0) setSchedule(data.scheduleItems);
+
+      toast.success("Formulário preenchido com sucesso pela IA!");
+      setShowMagicInput(false);
+      setMagicText("");
+    },
+    onError: (err) => toast.error(err.message)
+  });
 
   // Auth guard
   useEffect(() => {
@@ -293,9 +319,46 @@ export default function FichaForm() {
             <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "0.5rem", fontWeight: 600 }}>
               Formulário Técnico
             </p>
-            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 7vw, 3.5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.03em", lineHeight: 1 }}>
-              Dados da Operação
-            </h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 7vw, 3.5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.03em", lineHeight: 1 }}>
+                Dados da Operação
+              </h1>
+              <button 
+                type="button" 
+                onClick={() => setShowMagicInput(!showMagicInput)} 
+                style={{ background: 'var(--gold)', color: 'var(--ink)', padding: '0.6rem 1rem', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 12px rgba(var(--gold-rgb), 0.3)' }}
+              >
+                 <Wand2 size={16} /> Preenchimento Mágico
+              </button>
+            </div>
+
+            {showMagicInput && (
+               <div style={{ marginTop: '1.5rem', background: 'var(--card)', padding: '1.5rem', border: '1px solid var(--gold)', borderRadius: 'var(--radius)', animation: 'fadeIn 0.3s ease' }}>
+                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--ink)', marginBottom: '1rem', fontWeight: 600 }}>
+                    Cole abaixo as mensagens do WhatsApp ou o texto do Checklist. O DOM AI vai ler e preencher todos os campos do formulário para você.
+                  </p>
+                  <textarea 
+                    value={magicText} 
+                    onChange={e => setMagicText(e.target.value)} 
+                    placeholder="Ex: CHECKLIST ALINE BARROS Silva Jardim 08/05/2026..." 
+                    style={{ ...inputStyle, minHeight: '150px', marginBottom: '1rem', resize: 'vertical' }} 
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                    <button type="button" onClick={() => setShowMagicInput(false)} style={{ background: 'transparent', color: 'var(--ink)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.75rem' }}>
+                      Cancelar
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => parseMutation.mutate({ text: magicText })} 
+                      disabled={parseMutation.isPending || !magicText.trim()} 
+                      style={{ background: 'var(--ink)', color: 'var(--gold)', padding: '0.6rem 1.25rem', border: 'none', borderRadius: 'var(--radius-sm)', cursor: parseMutation.isPending ? 'not-allowed' : 'pointer', opacity: parseMutation.isPending ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase' }}
+                    >
+                      {parseMutation.isPending ? "Processando IA..." : "Extrair e Preencher"}
+                    </button>
+                  </div>
+               </div>
+            )}
+
             <div style={{ height: "1px", background: "var(--rule)", marginTop: "1.5rem" }} />
           </div>
 

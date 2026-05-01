@@ -184,6 +184,13 @@ const fichaRouter = router({
     const { listOllamaModels } = await import("./ai");
     return await listOllamaModels();
   }),
+
+  parseFichaText: adminProcedure
+    .input(z.object({ text: z.string() }))
+    .mutation(async ({ input }) => {
+      const { parseFichaTextWithAi } = await import("./ai");
+      return await parseFichaTextWithAi(input.text);
+    }),
 });
  
  // ─── Storage Router ───────────────────────────────────────────────────────────

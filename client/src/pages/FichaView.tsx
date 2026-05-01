@@ -1,8 +1,14 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, ContactRound, MapPin, UserRound, ArrowLeft, Pencil, Bed, Navigation, Plus } from "lucide-react";
-import { useEffect } from "react";
+import { CalendarDays, ContactRound, MapPin, UserRound, ArrowLeft, Pencil, Bed, Navigation, Plus, Printer, MessageCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
+
+declare global {
+  interface Window {
+    htmlToImage: any;
+  }
+}
 
 type AttractionFile = { name: string; url: string; key: string };
 
@@ -62,10 +68,59 @@ export default function FichaView() {
     );
   }
 
+  const handleExportPDF = () => {
+    window.print();
+  };
+
+  const handleShareJPEG = async () => {
+    const element = document.querySelector(".print-only") as HTMLElement;
+    if (!element || !window.htmlToImage) {
+      // Fallback to text WhatsApp if image generation fails
+      const text = encodeURIComponent(`Olá! Aqui está a Ficha Técnica do evento: ${ficha.eventName}\n\nAtração: ${ficha.attraction || 'DOM'}\nData: ${formatDate(ficha.eventDate)}\nLocal: ${ficha.location}`);
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+      return;
+    }
+
+    try {
+      // Hide buttons temporarily if they were visible, but print-only is usually hidden
+      const originalDisplay = element.style.display;
+      element.style.display = 'block';
+      const dataUrl = await window.htmlToImage.toJpeg(element, { quality: 0.95, backgroundColor: 'white' });
+      element.style.display = originalDisplay;
+
+      if (navigator.share) {
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `Checklist_${ficha.attraction?.replace(/\s+/g, '_') || 'DOM'}.jpg`, { type: 'image/jpeg' });
+        
+        try {
+          await navigator.share({
+            files: [file],
+            title: `Checklist ${ficha.attraction}`,
+            text: `Checklist oficial DOM - ${ficha.eventName}`
+          });
+        } catch (e) {
+          // If sharing fails or user cancels, download as fallback
+          const link = document.createElement('a');
+          link.download = `Checklist_${ficha.attraction || 'DOM'}.jpg`;
+          link.href = dataUrl;
+          link.click();
+        }
+      } else {
+        const link = document.createElement('a');
+        link.download = `Checklist_${ficha.attraction || 'DOM'}.jpg`;
+        link.href = dataUrl;
+        link.click();
+      }
+    } catch (error) {
+      console.error("Error generating JPEG:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ background: "var(--cream)" }}>
       {/* Header */}
-      <header style={{ background: "var(--ink)", padding: "0 1.25rem" }}>
+      <header className="no-print" style={{ background: "var(--ink)", padding: "0 1.25rem" }}>
         <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "64px" }}>
           <button
             onClick={() => navigate("/dashboard")}
@@ -75,301 +130,175 @@ export default function FichaView() {
             Dashboard
           </button>
 
-          {isAdmin && (
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <button
-              onClick={() => navigate(`/ficha/${fichaId}/editar`)}
-              style={{ padding: "0.5rem 1rem", background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
+              onClick={handleShareJPEG}
+              style={{ padding: "0.5rem 1rem", background: "transparent", color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
             >
-              <Pencil size={12} />
-              Editar
+              <MessageCircle size={12} />
+              WhatsApp
             </button>
-          )}
+            <button
+              onClick={handleExportPDF}
+              style={{ padding: "0.5rem 1rem", background: "transparent", color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
+            >
+              <Printer size={12} />
+              Exportar PDF
+            </button>
+            {isAdmin && (
+              <button
+                className="no-print"
+                onClick={() => navigate(`/ficha/${fichaId}/editar`)}
+                style={{ padding: "0.5rem 1rem", background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
+              >
+                <Pencil size={12} />
+                Editar
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Document */}
-      <main style={{ maxWidth: "900px", margin: "0 auto", padding: "clamp(2rem, 8vw, 4rem) 1.25rem 8rem" }}>
-
-        {/* ── Cover / Masthead ─────────────────────────────────────────── */}
-        <div style={{ marginBottom: "clamp(3rem, 10vw, 5rem)" }}>
-          <div style={{ height: "2px", background: "var(--ink)", marginBottom: "1.5rem", borderRadius: "2px" }} />
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
-            <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>
-              Ficha Técnica Operacional
-            </p>
-            <StatusBadge published={ficha.status === "published"} />
-          </div>
-
-          <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2.5rem, 10vw, 5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.04em", lineHeight: 0.9, marginBottom: "0.25rem" }}>
-            {ficha.eventName}
-          </h1>
-          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.5rem, 6vw, 3rem)", fontWeight: 400, fontStyle: "italic", color: "var(--gold)", letterSpacing: "-0.02em", lineHeight: 1, marginBottom: "2.5rem" }}>
-            {ficha.attraction || "Evento DOM"}
-          </h2>
-
-          <div style={{ height: "1px", background: "var(--rule)" }} />
-        </div>
-
-        {/* ── SECTION 1: Identificação ─────────────────────────────────── */}
-        <ViewSection number="01" title="Identificação" icon={MapPin}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem 2rem" }}>
-            <ViewField label="Atração Principal" value={ficha.attraction || "—"} wide />
-            
-            {ficha.attractionPdfs && (
-              <div style={{ gridColumn: "1 / -1", marginBottom: "1rem" }}>
-                <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "0.8rem", fontWeight: 600 }}>
-                  Arquivos e Rider
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-                  {(() => {
-                    try {
-                      const files = JSON.parse(ficha.attractionPdfs) as AttractionFile[];
-                      return files.map((file) => (
-                        <a
-                          key={file.key}
-                          href={file.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.5rem",
-                            padding: "0.6rem 1.25rem",
-                            background: "var(--ink)",
-                            color: "var(--gold)",
-                            fontFamily: "var(--font-sans)",
-                            fontSize: "0.65rem",
-                            fontWeight: 700,
-                            textDecoration: "none",
-                            letterSpacing: "0.1em",
-                            borderRadius: "var(--radius-sm)",
-                            transition: "all 0.2s",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
-                          }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                          {file.name.toUpperCase()}
-                        </a>
-                      ));
-                    } catch (e) {
-                      return null;
-                    }
-                  })()}
-                </div>
-              </div>
-            )}
-
-            <ViewField label="Data do Evento" value={formatDate(ficha.eventDate)} />
-            <ViewField label="Localização" value={ficha.stateCity || "—"} />
-            <ViewField label="Nome do Local" value={ficha.location || "—"} />
-            <ViewField label="Endereço Completo" value={ficha.address || "—"} wide />
-            <ViewField label="Produção Local" value={ficha.localProducerName || "—"} />
-            <ViewField label="Contato Produção" value={ficha.localProducerContact || "—"} />
-          </div>
-        </ViewSection>
-
-        {/* ── SECTION 2: Cronograma ─────────────────────────────────────── */}
-        <ViewSection number="02" title="Cronograma" icon={CalendarDays}>
-          {ficha.scheduleItems.length === 0 ? (
-            <p style={{ fontFamily: "var(--font-sans)", color: "var(--ink-light)", fontSize: "0.9rem" }}>
-              Nenhum horário cadastrado.
-            </p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              {ficha.scheduleItems.map((item, i) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    gap: "1.25rem",
-                    padding: "1rem 0",
-                    borderBottom: "1px solid var(--rule)",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <div style={{ minWidth: "70px", fontFamily: "var(--font-sans)", fontSize: "0.85rem", color: "var(--gold)", fontWeight: 700, letterSpacing: "0.05em" }}>
-                    {formatTime(item.time)}
-                  </div>
-                  <div style={{ fontFamily: "var(--font-sans)", fontSize: "0.95rem", color: "var(--ink)", fontWeight: 400, lineHeight: 1.4 }}>
-                    {item.activity}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </ViewSection>
-
-        {/* ── SECTION 3: Profissionais ─────────────────────────────────── */}
-        <ViewSection number="03" title="Profissionais" icon={UserRound}>
-          {ficha.professionals.length === 0 ? (
-            <p style={{ fontFamily: "var(--font-sans)", color: "var(--ink-light)", fontSize: "0.9rem" }}>
-              Nenhum profissional cadastrado.
-            </p>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "1.25rem" }}>
-              {ficha.professionals.map((prof) => (
-                <div
-                  key={prof.id}
-                  style={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius)",
-                    padding: "1.25rem",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-                  }}
-                >
-                  <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.05rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.35rem" }}>
-                    {prof.name || "—"}
-                  </p>
-                  <div style={{ fontFamily: "var(--font-sans)", fontSize: "0.65rem", color: "var(--gold)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.75rem" }}>
-                    {prof.role || "—"}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: "var(--font-sans)", fontSize: "0.8rem", color: "var(--ink-mid)" }}>
-                    <ContactRound size={14} style={{ opacity: 0.6 }} />
-                    {prof.contact || "—"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </ViewSection>
-
-        {/* ── SECTION 4: Hospedagem ─────────────────────────────────── */}
-        <div style={{ position: "relative" }}>
-          <ViewSection number="04" title="Hospedagem" icon={Bed}>
-            {isAdmin && (
-              <button
-                onClick={() => navigate(`/ficha/${fichaId}/editar`)}
-                style={{
-                  position: "absolute",
-                  top: "2.5rem",
-                  right: 0,
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--gold)",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.3rem",
-                  fontFamily: "var(--font-sans)",
-                  fontSize: "0.6rem",
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em"
-                }}
-              >
-                <Plus size={14} /> Adicionar Hotel
-              </button>
-            )}
-            {(!ficha.hotels || ficha.hotels.length === 0) ? (
-            <p style={{ fontFamily: "var(--font-sans)", color: "var(--ink-light)", fontSize: "0.9rem" }}>
-              Nenhuma hospedagem cadastrada.
-            </p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-              {ficha.hotels.map((hotel, i) => (
-                <div
-                  key={hotel.id}
-                  style={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius)",
-                    padding: "1.5rem",
-                    position: "relative",
-                    overflow: "hidden"
-                  }}
-                >
-                  <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: "var(--gold)" }} />
-                  
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
-                    <div>
-                      <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.25rem" }}>
-                        {hotel.name || `Hotel ${i + 1}`}
-                      </h3>
-                      <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.8rem", color: "var(--ink-mid)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        <MapPin size={14} /> {hotel.address || "—"}
-                      </p>
-                    </div>
-                    {hotel.gpsLink && (
-                      <a
-                        href={hotel.gpsLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.4rem",
-                          padding: "0.5rem 1rem",
-                          background: "var(--ink)",
-                          color: "var(--gold)",
-                          fontFamily: "var(--font-sans)",
-                          fontSize: "0.65rem",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          textDecoration: "none",
-                          borderRadius: "var(--radius-sm)"
-                        }}
-                      >
-                        <Navigation size={14} /> GPS
-                      </a>
-                    )}
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem" }}>
-                    <ViewField label="Recepção / Geral" value={hotel.contact || "—"} />
-                    <ViewField label="Pessoa de Contato" value={hotel.contactPerson || "—"} />
-                    <ViewField label="Contato Local / WhatsApp" value={hotel.localContact || "—"} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </ViewSection>
-      </div>
-
-      {/* ── SECTION 5: Logística ─────────────────────────────────── */}
-      <ViewSection number="05" title="Logística" icon={MapPin}>
-        {(!ficha.logistics || ficha.logistics.length === 0) ? (
-          <p style={{ fontFamily: "var(--font-sans)", color: "var(--ink-light)", fontSize: "0.9rem" }}>
-            Nenhuma informação de logística cadastrada.
-          </p>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
-            {ficha.logistics.map((item, i) => (
-              <div key={i} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.5rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-                  <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, color: "var(--gold)", letterSpacing: "0.1em", textTransform: "uppercase", background: "rgba(var(--gold-rgb), 0.1)", padding: "0.25rem 0.5rem", borderRadius: "4px" }}>
-                    {item.role || "Logística"}
-                  </span>
-                </div>
-                <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.25rem" }}>
-                  {item.name || "—"}
-                </h3>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--ink-light)", fontFamily: "var(--font-sans)", fontSize: "0.85rem" }}>
-                  <ContactRound size={14} />
-                  {item.contact || "—"}
-                </div>
-              </div>
+      {/* Document View (Web UI / PDF Base) */}
+      {/* High-Fidelity PDF Pattern (Print Only) */}
+      <div className="print-only">
+        <div style={{ 
+          background: "white", 
+          color: "black", 
+          minHeight: "297mm", 
+          padding: "10mm", 
+          fontFamily: "'Helvetica Condensed', 'Arial Narrow', sans-serif", 
+          position: "relative",
+          overflow: "hidden"
+        }}>
+          {/* Watermark Background */}
+          <div style={{ 
+            position: "absolute", 
+            top: 0, left: 0, right: 0, bottom: 0, 
+            opacity: 0.05, 
+            zIndex: 0,
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: "50px",
+            padding: "50px",
+            pointerEvents: "none"
+          }}>
+            {Array.from({ length: 24 }).map((_, i) => (
+              <div key={i} style={{ fontSize: "40px", fontWeight: 900, transform: "rotate(-30deg)" }}>DOM</div>
             ))}
           </div>
-        )}
-      </ViewSection>
 
-        {/* Footer rule */}
-        <div style={{ borderTop: "2px solid var(--ink)", marginTop: "4rem", paddingTop: "2rem", display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center", textAlign: "center" }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.25rem", fontWeight: 800, color: "var(--ink)", letterSpacing: "0.05em" }}>
-            DOM <span style={{ fontWeight: 400, fontStyle: "italic", color: "var(--gold)" }}>PRODUÇÕES</span>
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <div style={{ background: "#1a365d", padding: "20px 30px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", borderBottom: "4px solid #1a365d" }}>
+              <h1 style={{ color: "white", margin: 0, fontSize: "42px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "-2px", fontFamily: "Impact, sans-serif" }}>
+                CHECKLIST {ficha.attraction ? ficha.attraction.toUpperCase() : "DOM"}
+              </h1>
+              <div style={{ background: "#2d3748", color: "white", width: "70px", height: "70px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: "28px", borderRadius: "8px" }}>AB</div>
+            </div>
+            <div style={{ padding: "0 10px" }}>
+              <p style={{ fontWeight: 700, fontSize: "14px", marginBottom: "25px", borderBottom: "1px solid #ddd", paddingBottom: "5px", textTransform: "uppercase" }}>
+                {ficha.attraction ? ficha.attraction.toUpperCase() : "DOM"} – {ficha.stateCity || "LOCAL"} – {formatDate(ficha.eventDate)}
+              </p>
+              <div style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                <p><strong>NOME DO EVENTO:</strong> {ficha.eventName.toUpperCase()}</p>
+                <p><strong>LOCAL DO EVENTO:</strong> ({ficha.location.toUpperCase()})<br/> {ficha.address.toUpperCase()}</p>
+                <div style={{ marginTop: "20px" }}>
+                  <p><strong>PRODUTOR LOCAL:</strong> {ficha.localProducerName?.toUpperCase() || "—"} (DOM) TEL: {ficha.localProducerContact || "—"}</p>
+                  <p><strong>PRODUTOR RESPONSÁVEL:</strong> GUSTAVO BAYOUT (DOM) TEL: 22 99263-0265</p>
+                  <p><strong>PRODUTOR AUXILIAR:</strong> LUCAS SANTIAGO (DOM) TEL: 21 97320-4056</p>
+                </div>
+                <div style={{ marginTop: "20px" }}>
+                  {ficha.professionals.map((prof, i) => (
+                    <p key={i}><strong>{prof.role.toUpperCase()}:</strong> {prof.name.toUpperCase()} {prof.contact ? `TEL: ${prof.contact}` : ""}</p>
+                  ))}
+                  {ficha.logistics.map((log, i) => (
+                    <p key={i}><strong>{log.role.toUpperCase()}:</strong> {log.name.toUpperCase()} {log.contact ? `TEL: ${log.contact}` : ""}</p>
+                  ))}
+                </div>
+                <div style={{ marginTop: "30px" }}>
+                  {ficha.scheduleItems.map((item, i) => (
+                    <p key={i}><strong>HORÁRIO {item.activity.toUpperCase()}:</strong> {formatTime(item.time)}</p>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-          <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.55rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--ink-faint)" }}>
-            Documentação Técnica de Eventos
-          </span>
-          <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.55rem", color: "var(--ink-faint)", marginTop: "0.5rem" }}>
-            ID #{ficha.id} — {new Date().getFullYear()}
-          </span>
         </div>
-      </main>
+      </div>
+
+      {/* Modern Dashboard View (Web UI) */}
+      <div className="no-print">
+        <main style={{ maxWidth: "900px", margin: "0 auto", padding: "4rem 1.25rem 8rem" }}>
+          
+          {/* Cover / Masthead */}
+          <div style={{ marginBottom: "5rem" }}>
+            <div style={{ height: "2px", background: "var(--ink)", marginBottom: "1.5rem", borderRadius: "2px" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 }}>Ficha Técnica Operacional</p>
+              <StatusBadge published={ficha.status === "published"} />
+            </div>
+            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2.5rem, 10vw, 5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.04em", lineHeight: 0.9, marginBottom: "0.25rem" }}>{ficha.eventName}</h1>
+            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.5rem, 6vw, 3rem)", fontWeight: 400, fontStyle: "italic", color: "var(--gold)", letterSpacing: "-0.02em", lineHeight: 1, marginBottom: "2.5rem" }}>{ficha.attraction || "Evento DOM"}</h2>
+            <div style={{ height: "1px", background: "var(--rule)" }} />
+          </div>
+
+          <ViewSection number="01" title="Identificação" icon={MapPin}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem 2rem" }}>
+              <ViewField label="Atração Principal" value={ficha.attraction || "—"} wide />
+              <ViewField label="Data do Evento" value={formatDate(ficha.eventDate)} />
+              <ViewField label="Localização" value={ficha.stateCity || "—"} />
+              <ViewField label="Nome do Local" value={ficha.location || "—"} />
+              <ViewField label="Endereço Completo" value={ficha.address || "—"} wide />
+              <ViewField label="Produção Local" value={ficha.localProducerName || "—"} />
+              <ViewField label="Contato Produção" value={ficha.localProducerContact || "—"} />
+            </div>
+          </ViewSection>
+
+          <ViewSection number="02" title="Cronograma" icon={CalendarDays}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+              {ficha.scheduleItems.map((item) => (
+                <div key={item.id} style={{ display: "flex", gap: "1.25rem", padding: "1rem 0", borderBottom: "1px solid var(--rule)" }}>
+                  <div style={{ minWidth: "70px", color: "var(--gold)", fontWeight: 700 }}>{formatTime(item.time)}</div>
+                  <div>{item.activity}</div>
+                </div>
+              ))}
+            </div>
+          </ViewSection>
+
+          <ViewSection number="03" title="Profissionais" icon={UserRound}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "1.25rem" }}>
+              {ficha.professionals.map((prof) => (
+                <div key={prof.id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.25rem" }}>
+                  <p style={{ fontWeight: 700, color: "var(--ink)", marginBottom: "0.35rem" }}>{prof.name || "—"}</p>
+                  <div style={{ fontSize: "0.65rem", color: "var(--gold)", fontWeight: 700, textTransform: "uppercase" }}>{prof.role || "—"}</div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--ink-mid)" }}>{prof.contact || "—"}</div>
+                </div>
+              ))}
+            </div>
+          </ViewSection>
+
+          <ViewSection number="04" title="Hospedagem" icon={Bed}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+              {ficha.hotels.map((hotel) => (
+                <div key={hotel.id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "1.5rem", position: "relative" }}>
+                  <div style={{ position: "absolute", top: 0, left: 0, width: "4px", height: "100%", background: "var(--gold)" }} />
+                  <h3 style={{ fontWeight: 700, marginBottom: "0.25rem" }}>{hotel.name}</h3>
+                  <p style={{ fontSize: "0.8rem", color: "var(--ink-mid)" }}>{hotel.address}</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.5rem", marginTop: "1rem" }}>
+                    <ViewField label="Contato" value={hotel.contact || "—"} />
+                    <ViewField label="Pessoa" value={hotel.contactPerson || "—"} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ViewSection>
+
+          <div style={{ borderTop: "2px solid var(--ink)", marginTop: "4rem", paddingTop: "2rem", textAlign: "center" }}>
+            <div style={{ fontWeight: 800, fontSize: "1.25rem" }}>DOM <span style={{ color: "var(--gold)", fontStyle: "italic" }}>PRODUÇÕES</span></div>
+            <p style={{ fontSize: "0.55rem", color: "var(--ink-faint)", marginTop: "0.5rem" }}>ID #{ficha.id} — {new Date().getFullYear()}</p>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

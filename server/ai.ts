@@ -75,7 +75,10 @@ Regras:
 4. No campo "response", coloque a mensagem que eu (o bot) devo falar para o usuário. Mesmo se fizer uma ação, explique o que fez de forma amigável.
 
 Ações possíveis:
+- "create_event": { "eventName": "...", "eventDate": "...", "location": "...", "address": "...", "attraction": "...", "localProducerName": "...", "localProducerContact": "..." }
 - "add_professional": { "eventName": "...", "professionalName": "...", "professionalRole": "...", "professionalContact": "..." }
+- "add_hotel": { "eventName": "...", "hotelName": "...", "hotelAddress": "...", "hotelContact": "..." }
+- "add_logistics": { "eventName": "...", "logisticsRole": "...", "logisticsName": "...", "logisticsContact": "..." }
 - "update_ficha_status": { "eventName": "...", "status": "published" | "draft" }
 - "add_schedule_item": { "eventName": "...", "time": "HH:MM", "activity": "..." }
 - "update_event_info": { "eventName": "...", "field": "location" | "eventDate" | "attraction" | "address", "value": "..." }
@@ -83,7 +86,7 @@ Ações possíveis:
 
 Formato de resposta esperado:
 {
-  "action": "add_professional" | "update_ficha_status" | "add_schedule_item" | "update_event_info" | "chat",
+  "action": "create_event" | "add_professional" | "add_hotel" | "add_logistics" | "update_ficha_status" | "add_schedule_item" | "update_event_info" | "chat",
   "data": { ... },
   "response": "Sua mensagem amigável aqui explicando o que fez ou respondendo à pergunta."
 }
@@ -120,20 +123,45 @@ Formato de resposta esperado:
     }
 
     const { eventName } = result.data;
-    const targetEvents = await db
-      .select()
-      .from(fichasTecnicas)
-      .where(like(fichasTecnicas.eventName, `%${eventName}%`));
+    let eventId = 0;
+    let actualEventName = eventName;
 
-    if (targetEvents.length === 0) {
-      throw new Error(`Evento "${eventName}" não encontrado.`);
+    if (result.action !== "create_event") {
+      const targetEvents = await db
+        .select()
+        .from(fichasTecnicas)
+        .where(like(fichasTecnicas.eventName, `%${eventName}%`));
+
+      if (targetEvents.length === 0) {
+        throw new Error(`Evento "${eventName}" não encontrado.`);
+      }
+
+      eventId = targetEvents[0].id;
+      actualEventName = targetEvents[0].eventName;
     }
-
-    const eventId = targetEvents[0].id;
-    const actualEventName = targetEvents[0].eventName;
 
     // 2. Execute the action
     switch (result.action) {
+      case "create_event": {
+        const { createFicha } = await import("./db");
+        const { eventDate, location, address, attraction, localProducerName, localProducerContact } = result.data;
+        eventId = await createFicha({
+          eventName: eventName,
+          eventDate: eventDate || "",
+          location: location || "",
+          address: address || "",
+          attraction: attraction || "",
+          localProducerName: localProducerName || "",
+          localProducerContact: localProducerContact || "",
+          status: "draft",
+          createdByOpenId: "system", // Will default if handled by AI, but preferably we grab the user
+        });
+        return {
+          success: true,
+          message: result.response || `✅ Evento "${eventName}" criado com sucesso! Agora você pode adicionar profissionais, hotéis e itens no cronograma.`,
+          modelUsed: resolvedModel,
+        };
+      }
       case "add_professional": {
         const { professionalName, professionalRole, professionalContact } = result.data;
         await db.insert(professionals).values({
@@ -157,6 +185,38 @@ Formato de resposta esperado:
         return {
           success: true,
           message: result.response || `✅ Status do evento ${actualEventName} alterado para ${validStatus === "published" ? "Publicado" : "Rascunho"}.`,
+          modelUsed: resolvedModel,
+        };
+      }
+
+      case "add_hotel": {
+        const { hotelName, hotelAddress, hotelContact } = result.data;
+        const { hotels } = await import("../drizzle/schema");
+        await db.insert(hotels).values({
+          fichaId: eventId,
+          name: hotelName || "Hospedagem",
+          address: hotelAddress || "",
+          contact: hotelContact || "",
+        });
+        return {
+          success: true,
+          message: result.response || `✅ Hospedagem "${hotelName}" adicionada ao evento ${actualEventName}.`,
+          modelUsed: resolvedModel,
+        };
+      }
+
+      case "add_logistics": {
+        const { logisticsRole, logisticsName, logisticsContact } = result.data;
+        const { logistics } = await import("../drizzle/schema");
+        await db.insert(logistics).values({
+          fichaId: eventId,
+          role: logisticsRole || "Logística",
+          name: logisticsName || "",
+          contact: logisticsContact || "",
+        });
+        return {
+          success: true,
+          message: result.response || `✅ Item de logística "${logisticsRole} - ${logisticsName}" adicionado ao evento ${actualEventName}.`,
           modelUsed: resolvedModel,
         };
       }
@@ -199,5 +259,64 @@ Formato de resposta esperado:
   } catch (error: any) {
     console.error("[Ollama Error]", error);
     throw new Error("Erro ao processar comando de IA: " + error.message);
+  }
+}
+
+export async function parseFichaTextWithAi(text: string, model?: string) {
+  const resolvedModel = await resolveModel(model);
+  
+  const systemPrompt = `
+Você é o DOM AI, especialista em extração de dados de eventos.
+O usuário fornecerá um texto bruto (ex: um checklist, mensagem do whatsapp).
+Sua tarefa é extrair as informações e preencher OBRIGATORIAMENTE este JSON. Retorne apenas o JSON.
+
+{
+  "eventName": "",
+  "eventDate": "",
+  "location": "",
+  "address": "",
+  "attraction": "",
+  "localProducerName": "",
+  "localProducerContact": "",
+  "professionals": [
+    { "name": "", "role": "", "contact": "" }
+  ],
+  "hotels": [
+    { "name": "", "address": "", "contact": "", "contactPerson": "", "localContact": "", "gpsLink": "" }
+  ],
+  "logistics": [
+    { "role": "", "name": "", "contact": "" }
+  ],
+  "scheduleItems": [
+    { "time": "HH:MM", "activity": "" }
+  ]
+}
+
+Regras:
+1. Responda APENAS com o objeto JSON.
+2. Não invente dados. Se não achar algo, deixe string vazia "" ou array vazio [].
+3. Categorize a equipe corretamente:
+   - "Som, Luz, Led, Camarim, Gerador" -> professionals
+   - "Carregadores, Motoristas, Transporte" -> logistics
+   - "Produtor local" -> localProducerName
+   - "Produtor responsável/auxiliar" -> professionals
+`;
+
+  try {
+    const response = await ollama.chat({
+      model: resolvedModel,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: text }
+      ],
+      format: "json",
+      options: { temperature: 0.1 },
+    });
+
+    let raw = response.message.content.trim();
+    raw = raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "");
+    return JSON.parse(raw);
+  } catch (err: any) {
+    throw new Error("Erro ao interpretar texto: " + err.message);
   }
 }

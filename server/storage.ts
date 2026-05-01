@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, CreateBucketCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, CreateBucketCommand, HeadBucketCommand, PutBucketCorsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ENV } from "./_core/env";
 
@@ -23,6 +23,26 @@ export async function ensureBucket() {
       console.error("Error creating bucket:", err);
     }
   }
+
+  try {
+    // Set CORS policy so browser can upload directly
+    await s3Client.send(new PutBucketCorsCommand({
+      Bucket: ENV.s3Bucket,
+      CORSConfiguration: {
+        CORSRules: [
+          {
+            AllowedHeaders: ["*"],
+            AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"],
+            AllowedOrigins: ["*"],
+            ExposeHeaders: ["ETag"],
+            MaxAgeSeconds: 3600,
+          },
+        ],
+      },
+    }));
+  } catch (err) {
+    console.error("Error configuring CORS:", err);
+  }
 }
 
 export async function getPresignedUploadUrl(filename: string, contentType: string) {
@@ -34,8 +54,12 @@ export async function getPresignedUploadUrl(filename: string, contentType: strin
     ContentType: contentType,
   });
 
-  const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+  let url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
   
+  if (url.includes("minio:9000")) {
+    url = url.replace("minio:9000", "localhost:9000");
+  }
+
   // The public URL used by the frontend should point to our proxy
   const publicUrl = `/api/storage/${key}`;
   
