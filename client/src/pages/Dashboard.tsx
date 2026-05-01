@@ -288,6 +288,23 @@ export default function Dashboard() {
         )}
       </main>
 
+      {/* Footer */}
+      <footer style={{ padding: "4rem 1.25rem 2rem", borderTop: "1px solid var(--border)", background: "var(--background)", textAlign: "center" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
+            <span style={{ fontFamily: "var(--font-serif)", fontSize: "0.9rem", fontWeight: 800, color: "var(--gold)", letterSpacing: "0.05em" }}>DOM PRODUÇÕES</span>
+            <span style={{ color: "var(--border)" }}>|</span>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)", opacity: 0.8 }}>CIS LLC</span>
+          </div>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", color: "rgba(255, 255, 255, 0.3)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            Macaé • MIT LICENSE
+          </p>
+          <p style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.2)", marginTop: "1.5rem" }}>
+            © {new Date().getFullYear()} — All rights reserved
+          </p>
+        </div>
+      </footer>
+
       {/* Riders Modal */}
       {ridersModal.open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "1.25rem" }}>

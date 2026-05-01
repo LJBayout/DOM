@@ -438,10 +438,17 @@ export default function FichaView() {
             </div>
           </ViewSection>
 
-          <div style={{ borderTop: "2px solid var(--border)", marginTop: "4rem", paddingTop: "2rem", textAlign: "center" }}>
-            <div style={{ fontWeight: 800, fontSize: "1.25rem", color: "var(--foreground)" }}>DOM <span style={{ color: "var(--gold)", fontStyle: "italic" }}>PRODUÇÕES</span></div>
-            <p style={{ fontSize: "0.55rem", color: "rgba(255, 255, 255, 0.3)", marginTop: "0.5rem" }}>ID #{ficha.id} — {new Date().getFullYear()}</p>
-          </div>
+          <footer style={{ borderTop: "2px solid var(--border)", marginTop: "4rem", paddingTop: "2rem", textAlign: "center", paddingBottom: "4rem" }}>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
+              <span style={{ fontFamily: "var(--font-serif)", fontSize: "0.9rem", fontWeight: 800, color: "var(--gold)", letterSpacing: "0.05em" }}>DOM PRODUÇÕES</span>
+              <span style={{ color: "var(--border)" }}>|</span>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)", opacity: 0.8 }}>CIS LLC</span>
+            </div>
+            <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", color: "rgba(255, 255, 255, 0.3)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              Macaé • MIT LICENSE
+            </p>
+            <p style={{ fontSize: "0.55rem", color: "rgba(255, 255, 255, 0.2)", marginTop: "1rem" }}>ID #{ficha.id} — {new Date().getFullYear()}</p>
+          </footer>
         </main>
       </div>
 
