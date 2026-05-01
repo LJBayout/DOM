@@ -13,10 +13,24 @@ export function registerStorageProxy(app: Express) {
     }
 
     try {
-      const url = await getPresignedDownloadUrl(key);
+      const { s3Client } = await import("../storage");
+      const { GetObjectCommand } = await import("@aws-sdk/client-s3");
       
-      res.set("Cache-Control", "no-store");
-      res.redirect(307, url);
+      const command = new GetObjectCommand({
+        Bucket: ENV.s3Bucket,
+        Key: key,
+      });
+
+      const response = await s3Client.send(command);
+      
+      if (response.ContentType) res.set("Content-Type", response.ContentType);
+      if (response.ContentLength) res.set("Content-Length", response.ContentLength.toString());
+      
+      if (response.Body) {
+        (response.Body as any).pipe(res);
+      } else {
+        res.status(404).send("File body not found");
+      }
     } catch (err) {
       console.error("[StorageProxy] GET failed:", err);
       res.status(502).send("Storage proxy error");
