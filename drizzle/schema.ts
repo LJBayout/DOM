@@ -41,6 +41,7 @@ export const fichasTecnicas = mysqlTable("fichas_tecnicas", {
   createdByOpenId: varchar("createdByOpenId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deletedAt"),
 });
 
 export type FichaTecnica = typeof fichasTecnicas.$inferSelect;

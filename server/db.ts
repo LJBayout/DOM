@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   fichasTecnicas,
@@ -71,13 +71,13 @@ export async function getUserByOpenId(openId: string) {
 export async function listFichas() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(fichasTecnicas).orderBy(asc(fichasTecnicas.createdAt));
+  return db.select().from(fichasTecnicas).where(isNull(fichasTecnicas.deletedAt)).orderBy(asc(fichasTecnicas.createdAt));
 }
 
 export async function getFichaById(id: number) {
   const db = await getDb();
   if (!db) return null;
-  const rows = await db.select().from(fichasTecnicas).where(eq(fichasTecnicas.id, id)).limit(1);
+  const rows = await db.select().from(fichasTecnicas).where(and(eq(fichasTecnicas.id, id), isNull(fichasTecnicas.deletedAt))).limit(1);
   return rows[0] ?? null;
 }
 
@@ -97,11 +97,8 @@ export async function updateFicha(id: number, data: Partial<InsertFichaTecnica>)
 export async function deleteFicha(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(scheduleItems).where(eq(scheduleItems.fichaId, id));
-  await db.delete(professionals).where(eq(professionals.fichaId, id));
-  await db.delete(hotels).where(eq(hotels.fichaId, id));
-  await db.delete(logistics).where(eq(logistics.fichaId, id));
-  await db.delete(fichasTecnicas).where(eq(fichasTecnicas.id, id));
+  // Soft delete: just set the deletedAt timestamp
+  await db.update(fichasTecnicas).set({ deletedAt: new Date() }).where(eq(fichasTecnicas.id, id));
 }
 
 // ─── Schedule Items ───────────────────────────────────────────────────────────
