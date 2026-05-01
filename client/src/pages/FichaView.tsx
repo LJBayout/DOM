@@ -292,16 +292,49 @@ export default function FichaView() {
 
             {/* Hospedagem */}
             {ficha.hotels && ficha.hotels.length > 0 && (
-              <div>
+              <div style={{ pageBreakInside: "avoid" }}>
                 <h3 style={{ fontSize: "16px", color: "#1a365d", borderBottom: "2px solid #1a365d", paddingBottom: "5px", marginBottom: "15px", textTransform: "uppercase" }}>Hospedagem</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "15px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" }}>
                   {ficha.hotels.map((hotel, i) => (
-                    <div key={i} style={{ border: "1px solid #ddd", borderRadius: "6px", padding: "10px 15px", fontSize: "12px" }}>
-                      <p style={{ margin: "0 0 5px 0", fontWeight: 800, fontSize: "14px" }}>{hotel.name.toUpperCase()}</p>
-                      <p style={{ margin: "0 0 8px 0", color: "#555" }}>{hotel.address}</p>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span><strong>RECEPÇÃO:</strong> {hotel.contact || "—"}</span>
-                        <span><strong>CONTATO:</strong> {hotel.contactPerson || "—"} ({hotel.localContact || "—"})</span>
+                    <div key={i} style={{ 
+                      background: "#f8f9fa", 
+                      border: "1px solid #ddd", 
+                      borderLeft: "4px solid #d4af37", 
+                      borderRadius: "6px", 
+                      padding: "15px", 
+                      fontSize: "12px" 
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                        <div>
+                          <p style={{ margin: "0 0 2px 0", fontWeight: 800, fontSize: "15px", color: "#1a365d" }}>{hotel.name.toUpperCase()}</p>
+                          <p style={{ margin: 0, color: "#555", fontSize: "11px" }}>{hotel.address}</p>
+                        </div>
+                        <div style={{ background: "#1a365d", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: 800 }}>
+                          HOTEL {i + 1}
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "10px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #eee", paddingBottom: "4px" }}>
+                          <span style={{ color: "#666" }}>RECEPÇÃO / TEL:</span>
+                          <span style={{ fontWeight: 600 }}>{hotel.contact || "—"}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #eee", paddingBottom: "4px" }}>
+                          <span style={{ color: "#666" }}>CONTATO DIRETO:</span>
+                          <span style={{ fontWeight: 600 }}>{hotel.contactPerson ? `${hotel.contactPerson.toUpperCase()} ` : "—"}{hotel.localContact ? `(${hotel.localContact})` : ""}</span>
+                        </div>
+                        {hotel.gpsLink && (
+                          <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "4px", marginTop: "2px" }}>
+                            <span style={{ color: "#666" }}>LOCALIZAÇÃO (GPS):</span>
+                            <a href={hotel.gpsLink} target="_blank" rel="noreferrer" style={{ fontWeight: 600, color: "#1a365d", textDecoration: "none" }}>LINK DO MAPA 📍</a>
+                          </div>
+                        )}
+                        {hotel.roomListPdfs && (
+                          <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "4px" }}>
+                            <span style={{ color: "#666", fontWeight: 700 }}>ROOM LIST:</span>
+                            <span style={{ color: "#d4af37", fontWeight: 800 }}>ANEXADO (PDF)</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
