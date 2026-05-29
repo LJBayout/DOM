@@ -1,0 +1,528 @@
+# Instincts generated from https://github.com/LJBayout/DOM
+# Generated: 2026-05-29T16:35:09.763Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: DOM-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, fix, style
+
+## Evidence
+
+- 23 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat: add AI-powered form auto-fill and JPEG export capabilities to Ficha Técnica, fix: proxy storage downloads to avoid MinIO DNS issues on client
+
+---
+id: DOM-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Commit Length
+
+## Action
+
+Write moderate-length commit messages (~63 characters)
+
+## Evidence
+
+- Average commit message length: 63 chars
+- Based on 23 commits
+
+---
+id: DOM-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: DOM-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: DOM-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: 
+
+---
+id: DOM-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: DOM-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~20x per month
+- Files: client/src/pages/*, server/*, drizzle/*
+
+---
+id: DOM-workflow-feature-development-fichaform-fichaview
+trigger: "when doing feature development fichaform fichaview"
+confidence: 0.7
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Workflow Feature Development Fichaform Fichaview
+
+## Action
+
+Follow the feature-development-fichaform-fichaview workflow:
+1. Edit client/src/pages/FichaForm.tsx to add or enhance form features
+2. Edit client/src/pages/FichaView.tsx to update ficha viewing/export features
+3. Optionally edit server/ai.ts or server/routers.ts for backend/AI support
+4. Optionally update client/index.html or client/src/index.css for UI changes
+5. Optionally update server/storage.ts or related backend files for storage/export
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~4x per month
+- Files: client/src/pages/FichaForm.tsx, client/src/pages/FichaView.tsx, server/ai.ts
+
+---
+id: DOM-workflow-database-schema-update
+trigger: "when doing database schema update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Workflow Database Schema Update
+
+## Action
+
+Follow the database-schema-update workflow:
+1. Edit drizzle/schema.ts to update schema definitions
+2. Optionally edit server/db.ts for logic changes
+3. Optionally update or add seed/migration scripts
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: drizzle/schema.ts, server/db.ts, scratch/seed_cities.ts
+
+---
+id: DOM-workflow-dashboard-or-adminpanel-ui-enhancement
+trigger: "when doing dashboard or adminpanel ui enhancement"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Workflow Dashboard Or Adminpanel Ui Enhancement
+
+## Action
+
+Follow the dashboard-or-adminpanel-ui-enhancement workflow:
+1. Edit client/src/pages/Dashboard.tsx or client/src/pages/AdminPanel.tsx to add or update UI elements
+2. Optionally edit client/src/pages/FichaView.tsx for related UI changes
+3. Optionally update client/src/index.css for styling
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: client/src/pages/Dashboard.tsx, client/src/pages/AdminPanel.tsx, client/src/pages/FichaView.tsx
+
+---
+id: DOM-workflow-storage-or-upload-feature-update
+trigger: "when doing storage or upload feature update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/LJBayout/DOM
+---
+
+# DOM Workflow Storage Or Upload Feature Update
+
+## Action
+
+Follow the storage-or-upload-feature-update workflow:
+1. Edit server/_core/storageProxy.ts or server/storage.ts for backend storage logic
+2. Edit client/src/pages/FichaForm.tsx for upload UI/logic
+3. Optionally update package.json and pnpm-lock.yaml for dependency changes
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: server/_core/storageProxy.ts, server/storage.ts, client/src/pages/FichaForm.tsx
+
+---
+id: dom-instinct-file-naming-camelcase
+trigger: "When creating or renaming a file in the codebase"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct File Naming Camelcase
+
+## Action
+
+Name the file using camelCase (e.g., fichaForm.tsx)
+
+## Evidence
+
+- Pattern in namingConventions.files
+- Seen in client/src/pages/FichaForm.tsx
+
+---
+id: dom-instinct-function-naming-camelcase
+trigger: "When defining a function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Function Naming Camelcase
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.functions
+- Seen in client/src/pages/FichaForm.tsx
+
+---
+id: dom-instinct-class-naming-pascalcase
+trigger: "When defining a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Class Naming Pascalcase
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.classes
+- Seen in client/src/pages/FichaForm.tsx
+
+---
+id: dom-instinct-constant-naming-screaming-snake-case
+trigger: "When defining a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Constant Naming Screaming Snake Case
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in namingConventions.constants
+- Seen in client/src/pages/FichaForm.tsx
+
+---
+id: dom-instinct-import-style-mixed
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Import Style Mixed
+
+## Action
+
+Use a mix of default and named imports as appropriate
+
+## Evidence
+
+- Pattern in importStyle: mixed
+- Seen in client/src/pages/FichaForm.tsx
+
+---
+id: dom-instinct-export-style-named
+trigger: "When exporting modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Export Style Named
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Pattern in exportStyle: named
+- Seen in client/src/pages/FichaForm.tsx
+
+---
+id: dom-instinct-testing-location-separate
+trigger: "When adding tests for a feature"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Testing Location Separate
+
+## Action
+
+Place test files in a separate directory from source code
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation: separate
+
+---
+id: dom-instinct-testing-after-feature
+trigger: "When implementing a new feature"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Testing After Feature
+
+## Action
+
+Write tests for the feature after implementation
+
+## Evidence
+
+- Commit sequence in feature-development workflow
+- Seen in workflow: feature-development
+
+---
+id: dom-instinct-git-commit-conventional
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Git Commit Conventional
+
+## Action
+
+Use the conventional commit format: <type>: <description> (e.g., feat: add new feature)
+
+## Evidence
+
+- Pattern in commits.prefixes
+- Seen in commit: feat: add AI-powered form auto-fill and JPEG export capabilities to Ficha Técnica
+
+---
+id: dom-instinct-git-commit-length-60plus
+trigger: "When composing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Git Commit Length 60plus
+
+## Action
+
+Write a descriptive commit message averaging around 60 characters
+
+## Evidence
+
+- Pattern in commits.averageLength: 63
+- Seen in commit examples
+
+---
+id: dom-instinct-workflow-feature-ficha
+trigger: "When adding or improving ficha (event sheet) functionality (auto-fill, export, GPS, layout)"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Workflow Feature Ficha
+
+## Action
+
+Edit FichaForm.tsx and FichaView.tsx, optionally update server/ai.ts, server/routers.ts, index.html, index.css, and server/storage.ts
+
+## Evidence
+
+- Workflow: feature-development-fichaform-fichaview
+- Seen in commits: feat: add AI-powered form auto-fill and JPEG export capabilities to Ficha Técnica
+
+---
+id: dom-instinct-workflow-database-schema-update
+trigger: "When changing the structure of the database (e.g., add/remove columns, implement soft delete)"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Workflow Database Schema Update
+
+## Action
+
+Edit drizzle/schema.ts, optionally update server/db.ts and seed/migration scripts
+
+## Evidence
+
+- Workflow: database-schema-update
+- Seen in commit: fix: remove legacy hotel columns from fichas_tecnicas schema
+
+---
+id: dom-instinct-workflow-dashboard-adminpanel-ui
+trigger: "When adding new UI features or polishing the Dashboard/AdminPanel experience"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Workflow Dashboard Adminpanel Ui
+
+## Action
+
+Edit Dashboard.tsx or AdminPanel.tsx, optionally update FichaView.tsx and index.css
+
+## Evidence
+
+- Workflow: dashboard-or-adminpanel-ui-enhancement
+- Seen in commit: style: update dashboard action buttons layout and add utility to hide scrollbars
+
+---
+id: dom-instinct-workflow-storage-upload-update
+trigger: "When adding, fixing, or enhancing file upload or storage proxy capabilities"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: LJBayout/DOM
+---
+
+# Dom Instinct Workflow Storage Upload Update
+
+## Action
+
+Edit storageProxy.ts or storage.ts, update FichaForm.tsx for upload UI/logic, optionally update package.json and pnpm-lock.yaml
+
+## Evidence
+
+- Workflow: storage-or-upload-feature-update
+- Seen in commit: fix: proxy storage downloads to avoid MinIO DNS issues on client
+
