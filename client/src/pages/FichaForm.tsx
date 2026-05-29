@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Mail, MapPin, Phone, Plus, Trash2, UserRound, ArrowLeft, Save, X, Bed, Download } from "lucide-react";
+import { Mail, MapPin, Phone, Plus, Trash2, UserRound, ArrowLeft, Save, X, Bed, Download, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
@@ -55,6 +55,7 @@ export default function FichaForm() {
   const [stateCity, setStateCity] = useState("");
   const [location, setLocation] = useState("");
   const [address, setAddress] = useState("");
+  const [gpsLink, setGpsLink] = useState("");
   const [localProducerName, setLocalProducerName] = useState("");
   const [localProducerContact, setLocalProducerContact] = useState("");
   const [status, setStatus] = useState<"draft" | "published">("draft");
@@ -65,6 +66,42 @@ export default function FichaForm() {
   // Multiple Hotels state
   const [hotels, setHotels] = useState<HotelRow[]>([{ ...DEFAULT_HOTEL }]);
   const [activeHotelTab, setActiveHotelTab] = useState(0);
+
+  // Magic Fill state
+  const [showMagicInput, setShowMagicInput] = useState(false);
+  const [magicText, setMagicText] = useState("");
+
+  // GPS Modal state
+  const [gpsModal, setGpsModal] = useState<{ open: boolean; target: "venue" | "hotel"; initialValue: string; hotelIdx?: number }>({
+    open: false,
+    target: "venue",
+    initialValue: ""
+  });
+  const [gpsSearchValue, setGpsSearchValue] = useState("");
+
+  const parseMutation = trpc.ficha.parseFichaText.useMutation({
+    onSuccess: (data) => {
+      if (data.eventName) setEventName(data.eventName);
+      if (data.eventDate) setEventDate(data.eventDate);
+      if (data.location) setLocation(data.location);
+      if (data.address) setAddress(data.address);
+      if (data.attraction) setAttraction(data.attraction);
+      if (data.localProducerName) setLocalProducerName(data.localProducerName);
+      if (data.localProducerContact) setLocalProducerContact(data.localProducerContact);
+      
+      if (data.professionals && data.professionals.length > 0) setProfs(data.professionals);
+      if (data.hotels && data.hotels.length > 0) setHotels(data.hotels.map((h: Partial<HotelRow>) => ({ ...DEFAULT_HOTEL, ...h })));
+      if (data.logistics && data.logistics.length > 0) setLogisticsRows(data.logistics);
+      if (data.scheduleItems && data.scheduleItems.length > 0) setSchedule(data.scheduleItems);
+
+      toast.success("Formulário preenchido com sucesso pela IA!");
+      setShowMagicInput(false);
+      setMagicText("");
+    },
+    onError: (err) => toast.error(err.message)
+  });
+
+  const gpsMutation = trpc.ficha.generateGpsLink.useMutation();
 
   // Auth guard
   useEffect(() => {
@@ -94,6 +131,7 @@ export default function FichaForm() {
       setStateCity(fichaData.stateCity);
       setLocation(fichaData.location);
       setAddress(fichaData.address);
+      setGpsLink(fichaData.gpsLink || "");
       setLocalProducerName(fichaData.localProducerName);
       setLocalProducerContact(fichaData.localProducerContact);
       setStatus(fichaData.status);
@@ -148,7 +186,7 @@ export default function FichaForm() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const { data: producerSuggestions } = trpc.ficha.getProducerSuggestions.useQuery();
+  const { data: suggestions } = trpc.ficha.getAllSuggestions.useQuery();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,6 +199,7 @@ export default function FichaForm() {
       stateCity,
       location,
       address,
+      gpsLink,
       localProducerName,
       localProducerContact,
       status,
@@ -224,13 +263,20 @@ export default function FichaForm() {
  
   const getUploadUrlMutation = trpc.storage.getUploadUrl.useMutation();
  
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.type !== "application/pdf") { toast.error("Apenas arquivos PDF são permitidos."); return; }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("Arquivo muito grande! O limite máximo é de 5MB para evitar lentidão no sistema.");
+      e.target.value = "";
+      return;
+    }
  
     try {
-      const { url, publicUrl, key } = await getUploadUrlMutation.mutateAsync({
+      const { url, publicUrl, proxyUploadUrl, key } = await getUploadUrlMutation.mutateAsync({
         filename: file.name,
         contentType: file.type,
       });
@@ -240,7 +286,16 @@ export default function FichaForm() {
         body: file,
       });
  
-      if (!resp.ok) throw new Error("Falha no upload.");
+      if (!resp.ok) {
+        // Fallback to proxy upload if direct upload fails (CORS/Network)
+        console.warn("Direct upload failed, trying proxy...");
+        const proxyResp = await fetch(proxyUploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        if (!proxyResp.ok) throw new Error("Falha no upload via proxy.");
+      }
  
       setAttractionFiles((prev) => [...prev, { name: file.name, url: publicUrl, key }]);
       toast.success("PDF enviado.");
@@ -266,7 +321,7 @@ export default function FichaForm() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--cream)" }}>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
       {/* Header */}
       <header style={{ background: "var(--ink)", padding: "0 1.25rem" }}>
         <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "64px" }}>
@@ -293,9 +348,46 @@ export default function FichaForm() {
             <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--gold)", marginBottom: "0.5rem", fontWeight: 600 }}>
               Formulário Técnico
             </p>
-            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 7vw, 3.5rem)", fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.03em", lineHeight: 1 }}>
-              Dados da Operação
-            </h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 7vw, 3.5rem)", fontWeight: 800, color: "var(--foreground)", letterSpacing: "-0.03em", lineHeight: 1 }}>
+                Dados da Operação
+              </h1>
+              <button 
+                type="button" 
+                onClick={() => setShowMagicInput(!showMagicInput)} 
+                style={{ background: 'var(--gold)', color: 'var(--ink)', padding: '0.6rem 1rem', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 12px rgba(var(--gold-rgb), 0.3)' }}
+              >
+                 <Wand2 size={16} /> Preenchimento Mágico
+              </button>
+            </div>
+
+            {showMagicInput && (
+               <div style={{ marginTop: '1.5rem', background: 'var(--card)', padding: '1.5rem', border: '1px solid var(--gold)', borderRadius: 'var(--radius)', animation: 'fadeIn 0.3s ease' }}>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--foreground)', marginBottom: '1rem', fontWeight: 600 }}>
+                    Cole abaixo as mensagens do WhatsApp ou o texto do Checklist. O DOM AI vai ler e preencher todos os campos do formulário para você.
+                  </p>
+                  <textarea 
+                    value={magicText} 
+                    onChange={e => setMagicText(e.target.value)} 
+                    placeholder="Ex: CHECKLIST ALINE BARROS Silva Jardim 08/05/2026..." 
+                    style={{ ...inputStyle, minHeight: '150px', marginBottom: '1rem', resize: 'vertical' }} 
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                    <button type="button" onClick={() => setShowMagicInput(false)} style={{ background: 'transparent', color: 'var(--foreground)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.75rem' }}>
+                      Cancelar
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => parseMutation.mutate({ text: magicText })} 
+                      disabled={parseMutation.isPending || !magicText.trim()} 
+                      style={{ background: 'var(--ink)', color: 'var(--gold)', padding: '0.6rem 1.25rem', border: 'none', borderRadius: 'var(--radius-sm)', cursor: parseMutation.isPending ? 'not-allowed' : 'pointer', opacity: parseMutation.isPending ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase' }}
+                    >
+                      {parseMutation.isPending ? "Processando IA..." : "Extrair e Preencher"}
+                    </button>
+                  </div>
+               </div>
+            )}
+
             <div style={{ height: "1px", background: "var(--rule)", marginTop: "1.5rem" }} />
           </div>
 
@@ -304,11 +396,17 @@ export default function FichaForm() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.25rem" }}>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Nome do Evento</FieldLabel>
-                <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Ex.: Festival DOM 2024" required style={inputStyle} />
+                <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Ex.: Festival DOM 2024" list="event-names" required style={inputStyle} />
+                <datalist id="event-names">
+                  {suggestions?.events?.names?.map((n) => <option key={n} value={n} />)}
+                </datalist>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Atração Principal</FieldLabel>
-                <input type="text" value={attraction} onChange={(e) => setAttraction(e.target.value)} placeholder="Ex.: Artista ou Banda Principal" style={inputStyle} />
+                <input type="text" value={attraction} onChange={(e) => setAttraction(e.target.value)} placeholder="Ex.: Artista ou Banda Principal" list="event-attractions" style={inputStyle} />
+                <datalist id="event-attractions">
+                  {suggestions?.events?.attractions?.map((a) => <option key={a} value={a} />)}
+                </datalist>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Riders e Mapas (PDF)</FieldLabel>
@@ -327,6 +425,7 @@ export default function FichaForm() {
                     <Plus size={14} /> Enviar PDF
                     <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ display: "none" }} />
                   </label>
+                  <p style={{ fontSize: '0.6rem', color: 'var(--ink-faint)', fontStyle: 'italic', marginTop: '-0.5rem' }}>Limite máximo: 5MB por arquivo.</p>
                 </div>
               </div>
               <div>
@@ -335,11 +434,30 @@ export default function FichaForm() {
               </div>
               <div>
                 <FieldLabel>Cidade / UF</FieldLabel>
-                <input type="text" value={stateCity} onChange={(e) => setStateCity(e.target.value)} placeholder="Ex.: Rio de Janeiro, RJ" style={inputStyle} />
+                <input type="text" value={stateCity} onChange={(e) => setStateCity(e.target.value)} placeholder="Ex.: Rio de Janeiro, RJ" list="event-stateCities" style={inputStyle} />
+                <datalist id="event-stateCities">
+                  {suggestions?.events?.stateCities?.map((s) => <option key={s} value={s} />)}
+                </datalist>
               </div>
               <div>
-                <FieldLabel>Local / Venue</FieldLabel>
-                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ex.: Arena DOM" style={inputStyle} />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <FieldLabel>Local / Venue</FieldLabel>
+                  <button
+                    type="button"
+                    disabled={gpsMutation.isPending}
+                    onClick={() => {
+                      setGpsSearchValue(location || address);
+                      setGpsModal({ open: true, target: "venue", initialValue: location || address });
+                    }}
+                    style={{ background: "transparent", border: "none", color: "var(--gold)", fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline", opacity: gpsMutation.isPending ? 0.5 : 1 }}
+                  >
+                    {gpsMutation.isPending ? "Gerando..." : "Localizar GPS (IA)"}
+                  </button>
+                </div>
+                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ex.: Arena DOM" list="event-locations" style={inputStyle} />
+                <datalist id="event-locations">
+                  {suggestions?.events?.locations?.map((l) => <option key={l} value={l} />)}
+                </datalist>
               </div>
               <div>
                 <FieldLabel>Status da Ficha</FieldLabel>
@@ -350,20 +468,23 @@ export default function FichaForm() {
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <FieldLabel>Endereço Completo</FieldLabel>
-                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Endereço para logística" style={inputStyle} />
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Endereço para logística" list="event-addresses" style={inputStyle} />
+                <datalist id="event-addresses">
+                  {suggestions?.events?.addresses?.map((a) => <option key={a} value={a} />)}
+                </datalist>
               </div>
               <div>
                 <FieldLabel>Produtor Responsável</FieldLabel>
                 <input type="text" value={localProducerName} onChange={(e) => setLocalProducerName(e.target.value)} placeholder="Nome do produtor" list="producer-names" style={inputStyle} />
                 <datalist id="producer-names">
-                  {producerSuggestions?.names?.map((n) => <option key={n} value={n} />)}
+                  {suggestions?.producers?.names?.map((n) => <option key={n} value={n} />)}
                 </datalist>
               </div>
               <div>
                 <FieldLabel>Contato Produção</FieldLabel>
                 <input type="text" value={localProducerContact} onChange={(e) => setLocalProducerContact(e.target.value)} placeholder="Telefone ou e-mail" list="producer-contacts" style={inputStyle} />
                 <datalist id="producer-contacts">
-                  {producerSuggestions?.contacts?.map((c) => <option key={c} value={c} />)}
+                  {suggestions?.producers?.contacts?.map((c) => <option key={c} value={c} />)}
                 </datalist>
               </div>
             </div>
@@ -400,18 +521,25 @@ export default function FichaForm() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
                     <div>
                       <FieldLabel>Nome</FieldLabel>
-                      <input type="text" value={row.name} onChange={(e) => updateProfRow(i, "name", e.target.value)} placeholder="Nome completo" style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <input type="text" value={row.name} onChange={(e) => updateProfRow(i, "name", e.target.value)} placeholder="Nome completo" list={`prof-names-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`prof-names-${i}`}>
+                        {suggestions?.professionals?.names?.map((n) => <option key={n} value={n} />)}
+                      </datalist>
                     </div>
                     <div>
                       <FieldLabel>Função</FieldLabel>
                       <input type="text" value={row.role} onChange={(e) => updateProfRow(i, "role", e.target.value)} placeholder="Ex.: Técnico de Som" list={`role-suggestions-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
                       <datalist id={`role-suggestions-${i}`}>
                         {ROLE_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
+                        {suggestions?.professionals?.roles?.map((s) => <option key={`dyn-${s}`} value={s} />)}
                       </datalist>
                     </div>
                     <div style={{ gridColumn: "1 / -1" }}>
                       <FieldLabel>Contato</FieldLabel>
-                      <input type="text" value={row.contact} onChange={(e) => updateProfRow(i, "contact", e.target.value)} placeholder="Telefone ou WhatsApp" style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <input type="text" value={row.contact} onChange={(e) => updateProfRow(i, "contact", e.target.value)} placeholder="Telefone ou WhatsApp" list={`prof-contacts-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`prof-contacts-${i}`}>
+                        {suggestions?.professionals?.contacts?.map((c) => <option key={c} value={c} />)}
+                      </datalist>
                     </div>
                   </div>
                 </div>
@@ -495,8 +623,12 @@ export default function FichaForm() {
                     value={hotels[activeHotelTab].name}
                     onChange={(e) => updateHotelField(activeHotelTab, "name", e.target.value)}
                     placeholder="Ex.: Grand Hyatt Rio"
+                    list={`hotel-names-${activeHotelTab}`}
                     style={inputStyle}
                   />
+                  <datalist id={`hotel-names-${activeHotelTab}`}>
+                    {suggestions?.hotels?.names?.map((n) => <option key={n} value={n} />)}
+                  </datalist>
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
                   <FieldLabel>Endereço do Hotel</FieldLabel>
@@ -505,8 +637,12 @@ export default function FichaForm() {
                     value={hotels[activeHotelTab].address}
                     onChange={(e) => updateHotelField(activeHotelTab, "address", e.target.value)}
                     placeholder="Endereço completo para a van/logística"
+                    list={`hotel-addresses-${activeHotelTab}`}
                     style={inputStyle}
                   />
+                  <datalist id={`hotel-addresses-${activeHotelTab}`}>
+                    {suggestions?.hotels?.addresses?.map((a) => <option key={a} value={a} />)}
+                  </datalist>
                 </div>
                 <div>
                   <FieldLabel>Contato do Hotel / Recepção</FieldLabel>
@@ -515,8 +651,12 @@ export default function FichaForm() {
                     value={hotels[activeHotelTab].contact}
                     onChange={(e) => updateHotelField(activeHotelTab, "contact", e.target.value)}
                     placeholder="Telefone ou e-mail"
+                    list={`hotel-contacts-${activeHotelTab}`}
                     style={inputStyle}
                   />
+                  <datalist id={`hotel-contacts-${activeHotelTab}`}>
+                    {suggestions?.hotels?.contacts?.map((c) => <option key={c} value={c} />)}
+                  </datalist>
                 </div>
                 <div>
                   <FieldLabel>Pessoa de Contato</FieldLabel>
@@ -543,17 +683,15 @@ export default function FichaForm() {
                     <FieldLabel>Link GPS (Google Maps)</FieldLabel>
                     <button
                       type="button"
+                      disabled={gpsMutation.isPending}
                       onClick={() => {
                         const h = hotels[activeHotelTab];
-                        const query = encodeURIComponent(`${h.name} ${h.address}`);
-                        if (query) {
-                          updateHotelField(activeHotelTab, "gpsLink", `https://www.google.com/maps/search/?api=1&query=${query}`);
-                          toast.success("Link gerado com sucesso!");
-                        }
+                        setGpsSearchValue(h.name || h.address);
+                        setGpsModal({ open: true, target: "hotel", initialValue: h.name || h.address, hotelIdx: activeHotelTab });
                       }}
-                      style={{ background: "transparent", border: "none", color: "var(--gold)", fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline" }}
+                      style={{ background: "transparent", border: "none", color: "var(--gold)", fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline", opacity: gpsMutation.isPending ? 0.5 : 1 }}
                     >
-                      Gerar Link
+                      {gpsMutation.isPending ? "Gerando..." : "Gerar com IA"}
                     </button>
                   </div>
                   <input
@@ -590,12 +728,23 @@ export default function FichaForm() {
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
+                          if (file.size > MAX_FILE_SIZE) {
+                            toast.error("O Room List é muito pesado! Limite: 5MB.");
+                            e.target.value = "";
+                            return;
+                          }
                           try {
-                            const { url, publicUrl, key } = await getUploadUrlMutation.mutateAsync({
+                            const { url, publicUrl, proxyUploadUrl, key } = await getUploadUrlMutation.mutateAsync({
                               filename: file.name,
                               contentType: file.type,
                             });
-                            await fetch(url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+                            const resp = await fetch(url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+                            
+                            if (!resp.ok) {
+                              const proxyResp = await fetch(proxyUploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+                              if (!proxyResp.ok) throw new Error("Erro via proxy");
+                            }
+
                             updateHotelField(activeHotelTab, "roomListPdfs", publicUrl);
                             toast.success("Room List enviada!");
                           } catch (err) {
@@ -605,6 +754,7 @@ export default function FichaForm() {
                       />
                       <Download size={14} /> {hotels[activeHotelTab].roomListPdfs ? "Alterar Room List" : "Upload Room List (PDF)"}
                     </label>
+                    <p style={{ fontSize: '0.6rem', color: 'var(--ink-faint)', fontStyle: 'italic', marginTop: '0.25rem', width: '100%' }}>Limite: 5MB.</p>
                     {hotels[activeHotelTab].roomListPdfs && (
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                         <span style={{ color: "var(--gold)", fontSize: "0.65rem", fontWeight: 700 }}>✓ CARREGADO</span>
@@ -645,18 +795,25 @@ export default function FichaForm() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
                     <div>
                       <FieldLabel>Cargo / Função</FieldLabel>
-                      <input type="text" value={row.role} onChange={(e) => updateLogisticsRow(i, "role", e.target.value)} placeholder="Ex.: Motorista Van" list={`logistics-suggestions-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
-                      <datalist id={`logistics-suggestions-${i}`}>
+                      <input type="text" value={row.role} onChange={(e) => updateLogisticsRow(i, "role", e.target.value)} placeholder="Ex.: Motorista Van" list={`logistics-roles-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`logistics-roles-${i}`}>
                         {LOGISTICS_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
+                        {suggestions?.logistics?.roles?.map((s) => <option key={`dyn-${s}`} value={s} />)}
                       </datalist>
                     </div>
                     <div>
                       <FieldLabel>Nome</FieldLabel>
-                      <input type="text" value={row.name} onChange={(e) => updateLogisticsRow(i, "name", e.target.value)} placeholder="Nome completo" style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <input type="text" value={row.name} onChange={(e) => updateLogisticsRow(i, "name", e.target.value)} placeholder="Nome completo" list={`logistics-names-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`logistics-names-${i}`}>
+                        {suggestions?.logistics?.names?.map((n) => <option key={n} value={n} />)}
+                      </datalist>
                     </div>
                     <div style={{ gridColumn: "1 / -1" }}>
                       <FieldLabel>Contato</FieldLabel>
-                      <input type="text" value={row.contact} onChange={(e) => updateLogisticsRow(i, "contact", e.target.value)} placeholder="Telefone ou WhatsApp" style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <input type="text" value={row.contact} onChange={(e) => updateLogisticsRow(i, "contact", e.target.value)} placeholder="Telefone ou WhatsApp" list={`logistics-contacts-${i}`} style={{ ...inputStyle, padding: "0.6rem" }} />
+                      <datalist id={`logistics-contacts-${i}`}>
+                        {suggestions?.logistics?.contacts?.map((c) => <option key={c} value={c} />)}
+                      </datalist>
                     </div>
                   </div>
                 </div>
@@ -670,20 +827,81 @@ export default function FichaForm() {
             <button
               type="button"
               onClick={() => navigate("/dashboard")}
-              style={{ flex: "1", minWidth: "140px", padding: "1rem", background: "transparent", color: "var(--ink)", border: "1px solid var(--rule)", borderRadius: "var(--radius)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}
+              style={{ flex: "1", minWidth: "140px", padding: "1rem", background: "transparent", color: "var(--foreground)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              style={{ flex: "1", minWidth: "200px", padding: "1rem", background: "var(--ink)", color: "var(--gold)", border: "none", borderRadius: "var(--radius)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: isPending ? "not-allowed" : "pointer", opacity: isPending ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}
+              style={{ flex: "1", minWidth: "200px", padding: "1rem", background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: "var(--radius)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: isPending ? "not-allowed" : "pointer", opacity: isPending ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", boxShadow: "0 4px 12px rgba(212, 175, 55, 0.3)" }}
             >
               {isPending ? "Salvando..." : <><Save size={16} /> {isEditing ? "Salvar Alterações" : "Criar Ficha"}</>}
             </button>
           </div>
         </form>
       </main>
+
+      {/* Custom GPS AI Modal */}
+      {gpsModal.open && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.25rem", backdropFilter: "blur(4px)" }}>
+          <div style={{ background: "var(--ink)", width: "100%", maxWidth: "500px", padding: "2.5rem", borderRadius: "var(--radius)", border: "1px solid var(--gold)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
+            <h2 style={{ fontFamily: "var(--font-serif)", color: "white", fontSize: "1.5rem", marginBottom: "0.5rem", fontWeight: 800 }}>Localização GPS (IA)</h2>
+            <p style={{ fontFamily: "var(--font-sans)", color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", marginBottom: "2rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Refine o local para a busca do Google Maps</p>
+            
+            <FieldLabel style={{ color: "var(--gold)" }}>Nome do Local ou Endereço</FieldLabel>
+            <input 
+              autoFocus
+              type="text" 
+              value={gpsSearchValue} 
+              onChange={e => setGpsSearchValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const btn = document.getElementById('gps-confirm-btn');
+                  btn?.click();
+                }
+              }}
+              style={{ ...inputStyle, background: "rgba(255,255,255,0.05)", border: "1px solid var(--gold)", color: "white" }} 
+            />
+            
+            <div style={{ display: "flex", gap: "1rem", marginTop: "2.5rem" }}>
+              <button 
+                type="button" 
+                onClick={() => setGpsModal({ ...gpsModal, open: false })}
+                style={{ flex: 1, padding: "0.8rem", background: "transparent", color: "white", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer" }}
+              >
+                Cancelar
+              </button>
+              <button 
+                id="gps-confirm-btn"
+                type="button"
+                disabled={gpsMutation.isPending || !gpsSearchValue.trim()}
+                onClick={async () => {
+                  try {
+                    const result = await gpsMutation.mutateAsync({ location: gpsSearchValue, address: "" });
+                    if (gpsModal.target === "venue") {
+                      setGpsLink(result.url);
+                      if (result.refinedName) setLocation(result.refinedName);
+                      if (result.refinedAddress) setAddress(result.refinedAddress);
+                    } else if (gpsModal.hotelIdx !== undefined) {
+                      updateHotelField(gpsModal.hotelIdx, "gpsLink", result.url);
+                      if (result.refinedName) updateHotelField(gpsModal.hotelIdx, "name", result.refinedName);
+                      if (result.refinedAddress) updateHotelField(gpsModal.hotelIdx, "address", result.refinedAddress);
+                    }
+                    toast.success("Link GPS e dados atualizados!");
+                    setGpsModal({ ...gpsModal, open: false });
+                  } catch (e) {
+                    toast.error("Erro ao gerar link.");
+                  }
+                }}
+                style={{ flex: 1, padding: "0.8rem", background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase", cursor: "pointer", opacity: gpsMutation.isPending ? 0.6 : 1 }}
+              >
+                {gpsMutation.isPending ? "Gerando..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -700,15 +918,15 @@ function Section({ number, title, subtitle, children, icon: Icon }: {
   return (
     <div style={{ marginBottom: "clamp(3rem, 10vw, 4rem)" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "1.25rem", marginBottom: "1.5rem" }}>
-        <span style={{ fontFamily: "var(--font-serif)", fontSize: "2.5rem", fontWeight: 800, color: "var(--cream-deeper)", lineHeight: 1, letterSpacing: "-0.04em", userSelect: "none" }}>
+        <span style={{ fontFamily: "var(--font-serif)", fontSize: "2.5rem", fontWeight: 800, color: "rgba(255,255,255,0.05)", lineHeight: 1, letterSpacing: "-0.04em", userSelect: "none" }}>
           {number}
         </span>
         <div>
-          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem", fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.01em", marginBottom: "0.2rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem", fontWeight: 700, color: "var(--foreground)", letterSpacing: "-0.01em", marginBottom: "0.2rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             {Icon ? <Icon size={18} style={{ color: "var(--gold)" }} /> : null}
             {title}
           </h2>
-          <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.65rem", color: "var(--ink-light)", fontWeight: 400 }}>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.65rem", color: "rgba(255,255,255,0.6)", fontWeight: 400 }}>
             {subtitle}
           </p>
         </div>
@@ -762,12 +980,12 @@ function AddRowButton({ onClick, label }: { onClick: () => void; label: string }
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.75rem 1rem",
-  background: "var(--card)",
+  background: "rgba(255,255,255,0.03)",
   border: "1px solid var(--border)",
   borderRadius: "var(--radius-sm)",
   fontFamily: "var(--font-sans)",
   fontSize: "0.9rem",
-  color: "var(--ink)",
+  color: "#ffffff",
   outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s",
 };

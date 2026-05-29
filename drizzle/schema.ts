@@ -33,19 +33,15 @@ export const fichasTecnicas = mysqlTable("fichas_tecnicas", {
   stateCity: varchar("stateCity", { length: 255 }).notNull().default(""),
   location: varchar("location", { length: 255 }).notNull().default(""),
   address: text("address").notNull().default(""),
+  gpsLink: text("gpsLink").notNull().default(""),
   localProducerName: varchar("localProducerName", { length: 255 }).notNull().default(""),
   localProducerContact: varchar("localProducerContact", { length: 255 }).notNull().default(""),
-  hotelName: varchar("hotelName", { length: 255 }).notNull().default(""),
-  hotelAddress: text("hotelAddress").notNull().default(""),
-  hotelContact: varchar("hotelContact", { length: 255 }).notNull().default(""),
-  hotelContactPerson: varchar("hotelContactPerson", { length: 255 }).notNull().default(""),
-  hotelLocalContact: varchar("hotelLocalContact", { length: 255 }).notNull().default(""),
-  hotelGpsLink: text("hotelGpsLink").notNull().default(""),
-  hotelRoomListPdfs: text("hotelRoomListPdfs"),
+
   status: mysqlEnum("status", ["draft", "published"]).default("draft").notNull(),
   createdByOpenId: varchar("createdByOpenId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deletedAt"),
 });
 
 export type FichaTecnica = typeof fichasTecnicas.$inferSelect;

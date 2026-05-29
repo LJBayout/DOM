@@ -10,12 +10,15 @@ import FichaView from "./pages/FichaView";
 import Login from "./pages/Login";
 import InstallGuide from "./pages/InstallGuide";
 
+import AdminPanel from "./pages/AdminPanel";
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Login} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/admin" component={AdminPanel} />
       <Route path="/ficha/nova" component={FichaForm} />
       <Route path="/ficha/:id/editar" component={FichaForm} />
       <Route path="/ficha/:id" component={FichaView} />

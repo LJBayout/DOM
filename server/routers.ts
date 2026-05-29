@@ -22,7 +22,7 @@ import {
   updateFicha,
 } from "./db";
 import { getPresignedUploadUrl } from "./storage";
-import { saveProducerSuggestion, getProducerSuggestions } from "./redis";
+import { saveSuggestions, getAllSuggestions } from "./redis";
 
 // ─── Admin Middleware ─────────────────────────────────────────────────────────
 
@@ -70,6 +70,7 @@ const fichaInputSchema = z.object({
   stateCity: z.string().max(255).optional().default(""),
   location: z.string().max(255),
   address: z.string().optional().default(""),
+  gpsLink: z.string().optional().default(""),
   localProducerName: z.string().max(255).optional().default(""),
   localProducerContact: z.string().max(255).optional().default(""),
   status: z.enum(["draft", "published"]).optional().default("draft"),
@@ -82,8 +83,9 @@ const fichaInputSchema = z.object({
 // ─── Ficha Router ─────────────────────────────────────────────────────────────
 
 const fichaRouter = router({
-  list: protectedProcedure.query(async () => {
-    return listFichas();
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const isAdmin = ctx.user.role === "admin";
+    return listFichas(isAdmin);
   }),
 
   getById: protectedProcedure
@@ -111,6 +113,7 @@ const fichaRouter = router({
         stateCity: input.stateCity,
         location: input.location,
         address: input.address,
+        gpsLink: input.gpsLink,
         localProducerName: input.localProducerName,
         localProducerContact: input.localProducerContact,
         status: input.status,
@@ -122,6 +125,7 @@ const fichaRouter = router({
         replaceHotels(fichaId, input.hotels),
         replaceLogistics(fichaId, input.logistics),
       ]);
+      await saveSuggestions(input);
       return { id: fichaId };
     }),
 
@@ -138,6 +142,7 @@ const fichaRouter = router({
         stateCity: input.data.stateCity,
         location: input.data.location,
         address: input.data.address,
+        gpsLink: input.data.gpsLink,
         localProducerName: input.data.localProducerName,
         localProducerContact: input.data.localProducerContact,
         status: input.data.status,
@@ -148,9 +153,7 @@ const fichaRouter = router({
         replaceHotels(input.id, input.data.hotels),
         replaceLogistics(input.id, input.data.logistics),
       ]);
-      if (input.data.localProducerName || input.data.localProducerContact) {
-        await saveProducerSuggestion(input.data.localProducerName || "", input.data.localProducerContact || "");
-      }
+      await saveSuggestions(input.data);
       return { success: true };
     }),
 
@@ -163,9 +166,18 @@ const fichaRouter = router({
       return { success: true };
     }),
 
-  getProducerSuggestions: adminProcedure
+  updatePdfs: adminProcedure
+    .input(z.object({ id: z.number(), pdfs: z.string().nullable() }))
+    .mutation(async ({ input }) => {
+      const existing = await getFichaById(input.id);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha Técnica não encontrada." });
+      await updateFicha(input.id, { attractionPdfs: input.pdfs });
+      return { success: true };
+    }),
+
+  getAllSuggestions: adminProcedure
     .query(async () => {
-      return await getProducerSuggestions();
+      return await getAllSuggestions();
     }),
 
   processAiCommand: adminProcedure
@@ -185,6 +197,20 @@ const fichaRouter = router({
     const { listOllamaModels } = await import("./ai");
     return await listOllamaModels();
   }),
+
+  parseFichaText: adminProcedure
+    .input(z.object({ text: z.string() }))
+    .mutation(async ({ input }) => {
+      const { parseFichaTextWithAi } = await import("./ai");
+      return await parseFichaTextWithAi(input.text);
+    }),
+  
+  generateGpsLink: adminProcedure
+    .input(z.object({ location: z.string(), address: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const { suggestGpsLink } = await import("./ai");
+      return await suggestGpsLink(input.location, input.address || "");
+    }),
 });
  
  // ─── Storage Router ───────────────────────────────────────────────────────────
@@ -193,8 +219,8 @@ const fichaRouter = router({
    getUploadUrl: adminProcedure
      .input(z.object({ filename: z.string(), contentType: z.string() }))
      .mutation(async ({ input }) => {
-       const { url, key, publicUrl } = await getPresignedUploadUrl(input.filename, input.contentType);
-       return { url, key, publicUrl };
+       const { url, key, publicUrl, proxyUploadUrl } = await getPresignedUploadUrl(input.filename, input.contentType);
+       return { url, key, publicUrl, proxyUploadUrl };
      }),
  });
  
