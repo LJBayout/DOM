@@ -43,6 +43,13 @@ docker compose up -d --build
 - `JWT_SECRET`: Chave para autenticação.
 - `S3_ENDPOINT`: Endpoint do MinIO (`http://minio:9000`).
 - `S3_ACCESS_KEY` / `S3_SECRET_KEY`: Credenciais do Storage.
+- `S3_FORCE_PATH_STYLE`: `true` para MinIO local, `false` para S3/MinIO compatível com host virtual no VPS.
+
+### Produção e VPS
+- Para desenvolvimento local, o projeto usa o MinIO do `docker compose`.
+- Para VPS ou produção, a recomendação é apontar `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` e `S3_BUCKET` para um storage persistente fora do container do app.
+- Você pode usar um MinIO separado no VPS com disco persistente ou qualquer serviço S3-compatible.
+- Se o endpoint exigir URLs estilo `bucket.host.com`, defina `S3_FORCE_PATH_STYLE=false`.
 
 ## 🥇 Design e Identidade
 O design utiliza uma paleta **Luxury Black & Gold**, tipografia Serif clássica e micro-animações para uma sensação de exclusividade e robustez.

@@ -20,9 +20,9 @@ REGRAS OBRIGATÓRIAS
   "response": "mensagem curta e amigável para o usuário"
 }
 3) Para criação de evento, prefira "draft_event" (não confirme criação definitiva no texto).
-4) Se faltar dado, preencha com mock realista. Não deixe campos vazios em criação de evento.
+4) Se faltar dado, preencha com rascunho realista. Não deixe campos vazios em criação de evento.
 5) Nunca invente IDs de banco.
-6) Se o usuário pedir "cria um evento", gere um mock completo quando faltar contexto.
+6) Se o usuário pedir "cria um evento", gere um rascunho completo quando faltar contexto.
 7) Para draft_event/create_event, data DEVE incluir:
    eventName, eventDate, stateCity, location, address, attraction, localProducerName, localProducerContact,
    scheduleItems, professionals, hotels, logistics.

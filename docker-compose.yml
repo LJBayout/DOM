@@ -11,8 +11,8 @@ services:
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
       - S3_BUCKET=fichas-tecnicas
+      - S3_FORCE_PATH_STYLE=true
       - REDIS_URL=redis://redis:6379
-      - OLLAMA_URL=http://ollama:11434
     volumes:
       - .:/app
       - app_node_modules:/app/node_modules
@@ -22,8 +22,6 @@ services:
       minio:
         condition: service_started
       redis:
-        condition: service_started
-      ollama:
         condition: service_started
 
   db:
@@ -60,36 +58,6 @@ services:
     volumes:
       - redis_data:/data
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-      - .:/app # Mount to allow 'ollama create' to find Modelfile
-
-  ollama-init:
-    image: ollama/ollama:latest
-    environment:
-      - OLLAMA_HOST=ollama:11434
-    volumes:
-      - .:/app
-    entrypoint: /bin/sh
-    command: >
-      -c "
-      until ollama list > /dev/null 2>&1; do echo 'Waiting for the model service...'; sleep 5; done;
-      echo 'Pulling llama3.2:1b...';
-      ollama pull llama3.2:1b;
-      echo 'Creating dom-ai model...';
-      ollama create dom-ai -f /app/Modelfile;
-      echo 'Removing base models so only dom-ai remains...';
-      ollama rm llama3.2:3b || true;
-      ollama rm llama3.2:1b || true;
-      echo 'DOM AI initialization complete!';
-      "
-    depends_on:
-      - ollama
-
   phpmyadmin:
     image: phpmyadmin:latest
     ports:
@@ -106,5 +74,4 @@ volumes:
   mysql_data:
   minio_data:
   redis_data:
-  ollama_data:
   app_node_modules:

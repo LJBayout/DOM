@@ -1,13 +1,6 @@
-import { Ollama } from "ollama";
-import { ENV } from "./_core/env";
 import { getDb } from "./db";
-import { fichasTecnicas, professionals } from "../drizzle/schema";
-import { like } from "drizzle-orm";
-
-const ollama = new Ollama({ host: ENV.ollamaUrl });
-const DOM_AI_MODEL = "dom-ai";
+import { fichasTecnicas } from "../drizzle/schema";
 const DRAFT_TTL_MS = 30 * 60 * 1000;
-const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 12000);
 
 type DraftScheduleItem = { time: string; activity: string };
 type DraftProfessional = { name: string; role: string; contact: string };
@@ -44,6 +37,221 @@ type PendingEventDraft = {
 };
 
 const pendingEventDrafts = new Map<string, PendingEventDraft>();
+const draftTemplateCursorByRequester = new Map<string, number>();
+
+type MockEventTemplate = {
+  eventName: string;
+  dayOffset: number;
+  stateCity: string;
+  location: string;
+  address: string;
+  attraction: string;
+  localProducerName: string;
+  localProducerContact: string;
+};
+
+const MOCK_EVENT_TEMPLATES: MockEventTemplate[] = [
+  {
+    eventName: "LOLLAPALOOZA BRASIL",
+    dayOffset: 25,
+    stateCity: "São Paulo/SP",
+    location: "Autódromo de Interlagos",
+    address: "Av. Sen. Teotônio Vilela, 261 - Interlagos, São Paulo - SP",
+    attraction: "Sabrina Carpenter, Tyler The Creator, Chappell Roan",
+    localProducerName: "Lucas Mendes",
+    localProducerContact: "(11) 97722-3344",
+  },
+  {
+    eventName: "ROCK IN RIO",
+    dayOffset: 98,
+    stateCity: "Rio de Janeiro/RJ",
+    location: "Cidade do Rock - Parque Olímpico",
+    address: "Av. Embaixador Abelardo Bueno, s/n - Barra da Tijuca, Rio de Janeiro - RJ",
+    attraction: "Foo Fighters, Elton John, Stray Kids, Maroon 5",
+    localProducerName: "Roberta Silva",
+    localProducerContact: "(21) 98855-6677",
+  },
+  {
+    eventName: "UNIVERSO PARALELO",
+    dayOffset: 212,
+    stateCity: "Ituberá/BA",
+    location: "Praia de Pratigi",
+    address: "Praia de Pratigi, Ituberá - BA",
+    attraction: "Artistas Psytrance Internacionais",
+    localProducerName: "Tatiana Costa",
+    localProducerContact: "(71) 99666-1122",
+  },
+  {
+    eventName: "MONSTERS OF ROCK",
+    dayOffset: 40,
+    stateCity: "São Paulo/SP",
+    location: "Estádio do Morumbi",
+    address: "Av. Giovanni Gronchi, 7463 - Morumbi, São Paulo - SP",
+    attraction: "Guns N' Roses",
+    localProducerName: "Fernando Rocha",
+    localProducerContact: "(11) 95544-7788",
+  },
+  {
+    eventName: "JOÃO ROCK",
+    dayOffset: 35,
+    stateCity: "Ribeirão Preto/SP",
+    location: "Parque Permanente de Exposições",
+    address: "Av. Maurílio Biagi Filho, s/n - Ribeirânia, Ribeirão Preto - SP",
+    attraction: "Nacional e Internacional Rock",
+    localProducerName: "Juliana Barros",
+    localProducerContact: "(16) 99111-2233",
+  },
+  {
+    eventName: "TOMORROWLAND BRASIL",
+    dayOffset: 65,
+    stateCity: "Itu/SP",
+    location: "Parque Maeda",
+    address: "Rodovia Dep. Archimedes Lammoglia, Km 24 - Itu - SP",
+    attraction: "Artistas Eletrônicos Internacionais",
+    localProducerName: "Marcelo Santos",
+    localProducerContact: "(11) 98877-4455",
+  },
+  {
+    eventName: "PLANETA ATLÂNTIDA",
+    dayOffset: 50,
+    stateCity: "Osório/RS",
+    location: "Atlântida",
+    address: "Av. Central, s/n - Atlântida, Osório - RS",
+    attraction: "Line-up Verão Gaúcho",
+    localProducerName: "Camila Duarte",
+    localProducerContact: "(51) 99777-8899",
+  },
+  {
+    eventName: "FESTIVAL DE VERÃO SALVADOR",
+    dayOffset: 45,
+    stateCity: "Salvador/BA",
+    location: "Parque de Exposições",
+    address: "Av. Paralela, s/n - Salvador - BA",
+    attraction: "Axé e Artistas Nacionais/Internacionais",
+    localProducerName: "Rafael Mendes",
+    localProducerContact: "(71) 99444-5566",
+  },
+  {
+    eventName: "PRIMAVERA SOUND SÃO PAULO",
+    dayOffset: 190,
+    stateCity: "São Paulo/SP",
+    location: "Autódromo de Interlagos",
+    address: "Av. Sen. Teotônio Vilela, 261 - Interlagos, São Paulo - SP",
+    attraction: "Gorillaz e Internacionais",
+    localProducerName: "Ana Paula Costa",
+    localProducerContact: "(11) 96666-7788",
+  },
+  {
+    eventName: "C6 FEST",
+    dayOffset: 70,
+    stateCity: "São Paulo/SP",
+    location: "Parque Ibirapuera",
+    address: "Av. Pedro Álvares Cabral, s/n - Vila Mariana, São Paulo - SP",
+    attraction: "Robert Plant, The xx",
+    localProducerName: "Bruno Lima",
+    localProducerContact: "(11) 97788-9900",
+  },
+  {
+    eventName: "ROCK THE MOUNTAIN",
+    dayOffset: 155,
+    stateCity: "Petrópolis/RJ",
+    location: "Parque de Itaipava",
+    address: "Estrada União Industrial, 10000 - Itaipava, Petrópolis - RJ",
+    attraction: "Jorja Smith, Ivete Sangalo",
+    localProducerName: "Larissa Ferreira",
+    localProducerContact: "(24) 98822-3344",
+  },
+  {
+    eventName: "NÔMADE FESTIVAL",
+    dayOffset: 55,
+    stateCity: "São Paulo/SP",
+    location: "Parque Villa-Lobos",
+    address: "Av. Prof. Fonseca Rodrigues, 2001 - Alto de Pinheiros, São Paulo - SP",
+    attraction: "Line-up Nacional e Internacional",
+    localProducerName: "Diego Oliveira",
+    localProducerContact: "(11) 95533-2211",
+  },
+  {
+    eventName: "COSQUIN ROCK BRASIL",
+    dayOffset: 15,
+    stateCity: "Florianópolis/SC",
+    location: "Stage Music Park",
+    address: "Rod. Jornalista Maurício Sirotsky Sobrinho, s/n - Jurerê, Florianópolis - SC",
+    attraction: "Rock Internacional e Nacional",
+    localProducerName: "Sofia Almeida",
+    localProducerContact: "(48) 99655-4433",
+  },
+  {
+    eventName: "DOCE MARAVILHA",
+    dayOffset: 75,
+    stateCity: "Rio de Janeiro/RJ",
+    location: "Jockey Club",
+    address: "Rua Jardim Botânico, 1003 - Jardim Botânico, Rio de Janeiro - RJ",
+    attraction: "Artistas Multigênero",
+    localProducerName: "Pedro Henrique",
+    localProducerContact: "(21) 97744-1122",
+  },
+  {
+    eventName: "ARENA BRASILEIRA",
+    dayOffset: 45,
+    stateCity: "São Paulo/SP",
+    location: "Parque Ibirapuera",
+    address: "Av. Pedro Álvares Cabral, s/n - Vila Mariana, São Paulo - SP",
+    attraction: "Anitta, Ludmilla e mais",
+    localProducerName: "Mariana Costa",
+    localProducerContact: "(11) 98811-2201",
+  },
+  {
+    eventName: "WARUNG DAY FESTIVAL",
+    dayOffset: 80,
+    stateCity: "Itu/SP",
+    location: "Complexo Warung",
+    address: "Rodovia SP-300, Km 30 - Itu - SP",
+    attraction: "Eletrônica Internacional",
+    localProducerName: "Vinicius Rocha",
+    localProducerContact: "(11) 99922-3344",
+  },
+  {
+    eventName: "GOP TUN FESTIVAL",
+    dayOffset: 60,
+    stateCity: "São Paulo/SP",
+    location: "Local a Confirmar",
+    address: "São Paulo - SP",
+    attraction: "Eletrônica Underground",
+    localProducerName: "Julia Santos",
+    localProducerContact: "(11) 97755-6677",
+  },
+  {
+    eventName: "FESTIVAL DA LUA CHEIA",
+    dayOffset: 40,
+    stateCity: "Altinópolis/SP",
+    location: "Hotel Fazenda Vale das Grutas",
+    address: "Altinópolis - SP",
+    attraction: "Multigênero",
+    localProducerName: "Thiago Nery",
+    localProducerContact: "(16) 99633-2211",
+  },
+  {
+    eventName: "VILLAGE RIO",
+    dayOffset: 35,
+    stateCity: "Rio de Janeiro/RJ",
+    location: "Village Rio",
+    address: "Av. Infante Dom Henrique, s/n - Glória, Rio de Janeiro - RJ",
+    attraction: "Anitta, Vintage Culture",
+    localProducerName: "Amanda Freitas",
+    localProducerContact: "(21) 99433-5502",
+  },
+  {
+    eventName: "AME LAROC FESTIVAL",
+    dayOffset: 55,
+    stateCity: "Valinhos/SP",
+    location: "Complexo Laroc",
+    address: "Valinhos - SP",
+    attraction: "Eletrônica Internacional",
+    localProducerName: "Helena Prado",
+    localProducerContact: "(19) 99601-8832",
+  },
+];
 
 function normalizeIntentText(text: string): string {
   return text
@@ -80,6 +288,15 @@ function isCancelDraftIntent(text: string): boolean {
   return cancelTokens.some(token => normalized.includes(token));
 }
 
+function isOneClickCreateIntent(text: string): boolean {
+  const normalized = normalizeIntentText(text);
+  return (
+    normalized === "criar rascunho" ||
+    normalized === "criar rascunho de evento completo" ||
+    normalized.includes("criar rascunho de evento completo")
+  );
+}
+
 function readObjectArray(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value)
     ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
@@ -88,6 +305,13 @@ function readObjectArray(value: unknown): Record<string, unknown>[] {
 
 function compactRows<T>(items: T[], fallback: T[]): T[] {
   return items.length > 0 ? items : fallback;
+}
+
+function getNextTemplateIndex(requesterKey: string): number {
+  const current = draftTemplateCursorByRequester.get(requesterKey) ?? -1;
+  const next = (current + 1) % MOCK_EVENT_TEMPLATES.length;
+  draftTemplateCursorByRequester.set(requesterKey, next);
+  return next;
 }
 
 function toScheduleItems(value: unknown, fallback: DraftScheduleItem[]) {
@@ -171,17 +395,18 @@ function formatDraftSummary(draft: EventDraftData): string {
   return entries.map(([label, value]) => `- ${label}: ${value}`).join("\n");
 }
 
-function buildMockEventDraft(seed: Partial<EventDraftData> = {}): EventDraftData {
+function buildMockEventDraft(seed: Partial<EventDraftData> = {}, templateIndex = 0): EventDraftData {
   const defaultDate = new Date();
-  defaultDate.setDate(defaultDate.getDate() + 21);
-  const eventName = seed.eventName?.trim() || "EVENTO MOCK DOM AI";
+  const template = MOCK_EVENT_TEMPLATES[Math.max(0, Math.min(templateIndex, MOCK_EVENT_TEMPLATES.length - 1))];
+  defaultDate.setDate(defaultDate.getDate() + template.dayOffset);
+  const eventName = seed.eventName?.trim() || template.eventName;
   const eventDate = seed.eventDate?.trim() || defaultDate.toISOString().slice(0, 10);
-  const location = seed.location?.trim() || "Espaço DOM Arena";
-  const address = seed.address?.trim() || "Av. Paulista, 1000 - Bela Vista, São Paulo - SP";
-  const attraction = seed.attraction?.trim() || "Artista Teste";
-  const stateCity = seed.stateCity?.trim() || "São Paulo/SP";
-  const localProducerName = seed.localProducerName?.trim() || "Produtor Mock DOM";
-  const localProducerContact = seed.localProducerContact?.trim() || "(11) 99999-0000";
+  const location = seed.location?.trim() || template.location;
+  const address = seed.address?.trim() || template.address;
+  const attraction = seed.attraction?.trim() || template.attraction;
+  const stateCity = seed.stateCity?.trim() || template.stateCity;
+  const localProducerName = seed.localProducerName?.trim() || template.localProducerName;
+  const localProducerContact = seed.localProducerContact?.trim() || template.localProducerContact;
 
   return {
     eventName,
@@ -227,25 +452,7 @@ function buildMockEventDraft(seed: Partial<EventDraftData> = {}): EventDraftData
   };
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    promise
-      .then(result => {
-        clearTimeout(timer);
-        resolve(result);
-      })
-      .catch(error => {
-        clearTimeout(timer);
-        reject(error);
-      });
-  });
-}
-
-function extractDraftFromCreateIntent(text: string): EventDraftData | null {
+function extractDraftFromCreateIntent(text: string, requesterKey: string): EventDraftData | null {
   if (isCancelDraftIntent(text)) return null;
 
   const normalized = normalizeIntentText(text);
@@ -253,49 +460,27 @@ function extractDraftFromCreateIntent(text: string): EventDraftData | null {
     (normalized.includes("cria") && normalized.includes("evento")) ||
     normalized.includes("criar evento") ||
     normalized.includes("novo evento") ||
-    normalized.includes("mock de evento") ||
-    normalized.includes("evento mock") ||
+    normalized.includes("rascunho de evento") ||
+    normalized.includes("evento rascunho") ||
     normalized.includes("evento teste") ||
     normalized.includes("create event");
 
   if (!looksLikeCreate) return null;
 
-  const nameMatch = text.match(/(?:evento chamado|evento)\s+["']?([^"',\n]+?)["']?(?:\s+para|\s+em|\s+no|\s*$)/i);
+  const namedByLabel = text.match(/evento chamado\s+["']?([^"',\n]+?)["']?(?:\s+para|\s+em|\s+no|\s*$)/i);
+  const namedByQuotes = text.match(/evento\s+["']([^"'\n]+)["']/i);
   const eventDateMatch = text.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
   const locationMatch = text.match(/(?:\s+em|\s+no|\s+na)\s+([A-Za-z0-9À-ÿ\s\-'.,]+)$/i);
+  const locationCandidate = locationMatch?.[1]?.trim() || "";
+  const normalizedLocation = normalizeIntentText(locationCandidate);
+  const normalizedIsLanguage = normalizedLocation === "portugues";
+  const templateIndex = getNextTemplateIndex(requesterKey);
 
   return buildMockEventDraft({
-    eventName: nameMatch?.[1]?.trim() || "",
+    eventName: namedByLabel?.[1]?.trim() || namedByQuotes?.[1]?.trim() || "",
     eventDate: eventDateMatch?.[1] || "",
-    location: locationMatch?.[1]?.trim() || "",
-  });
-}
-
-async function chatWithDomAi(params: {
-  messages: { role: "user" | "assistant" | "system"; content: string }[];
-  format?: "json";
-  temperature?: number;
-  timeoutMs?: number;
-}) {
-  try {
-    const response = await withTimeout(
-      ollama.chat({
-        model: DOM_AI_MODEL,
-        messages: params.messages,
-        format: params.format,
-        options: {
-          temperature: params.temperature ?? 0.2,
-        },
-      }),
-      params.timeoutMs ?? OLLAMA_TIMEOUT_MS,
-      `dom-ai:${DOM_AI_MODEL}`
-    );
-    return { response, modelUsed: DOM_AI_MODEL };
-  } catch (error: any) {
-    const msg = error?.message || String(error);
-    console.warn(`[DOM AI] Model failed: ${DOM_AI_MODEL}`, msg);
-    throw new Error(`DOM AI indisponivel: ${msg}`);
-  }
+    location: normalizedIsLanguage ? "" : locationCandidate,
+  }, templateIndex);
 }
 
 export async function processAiCommand(
@@ -361,8 +546,43 @@ export async function processAiCommand(
     }
   }
 
-  const immediateDraft = latestUserMessage ? extractDraftFromCreateIntent(latestUserMessage) : null;
+  const immediateDraft = latestUserMessage ? extractDraftFromCreateIntent(latestUserMessage, draftKey) : null;
   if (immediateDraft) {
+    if (isOneClickCreateIntent(latestUserMessage)) {
+      const { createFicha, replaceHotels, replaceLogistics, replaceProfessionals, replaceScheduleItems } = await import("./db");
+      const fichaId = await createFicha({
+        eventName: immediateDraft.eventName || "Novo Evento",
+        eventDate: immediateDraft.eventDate || "",
+        attraction: immediateDraft.attraction || "",
+        stateCity: immediateDraft.stateCity || "",
+        location: immediateDraft.location || "",
+        address: immediateDraft.address || "",
+        gpsLink: immediateDraft.location
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              `${immediateDraft.location} ${immediateDraft.stateCity}`.trim()
+            )}`
+          : "",
+        localProducerName: immediateDraft.localProducerName || "",
+        localProducerContact: immediateDraft.localProducerContact || "",
+        status: "draft",
+        createdByOpenId: requesterOpenId || "system",
+      });
+      await Promise.all([
+        replaceScheduleItems(fichaId, immediateDraft.scheduleItems),
+        replaceProfessionals(fichaId, immediateDraft.professionals),
+        replaceHotels(fichaId, immediateDraft.hotels),
+        replaceLogistics(fichaId, immediateDraft.logistics),
+      ]);
+      return {
+        success: true,
+        message:
+          `✅ Evento "${immediateDraft.eventName}" criado com sucesso (ID ${fichaId}).\n\n` +
+          `${formatDraftSummary(immediateDraft)}`,
+        modelUsed: "heuristic-one-click",
+        actionTaken: "create_event",
+      };
+    }
+
     pendingEventDrafts.set(draftKey, {
       data: immediateDraft,
       createdAt: Date.now(),
@@ -373,7 +593,7 @@ export async function processAiCommand(
       message:
         `Montei um rascunho inicial direto do seu pedido.\n\n` +
         `${formatDraftSummary(immediateDraft)}\n\n` +
-        `Se estiver tudo certo, responda "confirmar criacao". Para abortar, responda "cancelar criacao".`,
+        `Se estiver tudo certo, responda "confirmar criacao". Para abortar, responda "cancelar criacao". Para outro evento mock, clique em "Criar rascunho" novamente.`,
       modelUsed: "heuristic-immediate",
       actionTaken: "chat",
     };
@@ -387,325 +607,103 @@ export async function processAiCommand(
     .map((e) => e.name)
     .join(", ");
   const eventNamesContext = eventNamesList || "nenhum evento cadastrado ainda";
-
-  const systemPrompt = `
-Você é o DOM AI da DOM Produções.
-Você conhece este projeto: fichas técnicas de eventos, profissionais, hotéis, logística, cronogramas e status draft/published.
-
-Contexto atual:
-Eventos cadastrados: [${eventNamesContext}]
-
-Regras:
-1. Responda APENAS com JSON válido.
-2. Se o usuário pedir para criar um evento e faltar informação, produza um mock realista e completo em formato draft_event.
-3. Se o usuário estiver só conversando, use "chat".
-4. Nunca afirme que um evento foi criado de fato; a criação real só acontece depois do usuário confirmar.
-5. No campo "response", escreva uma mensagem curta e amigável.
-
-Formato de resposta:
-{
-  "action": "draft_event" | "create_event" | "add_professional" | "add_hotel" | "add_logistics" | "update_ficha_status" | "add_schedule_item" | "update_event_info" | "chat",
-  "data": {
-    "eventName": "NOME DO EVENTO",
-    "eventDate": "YYYY-MM-DD",
-    "stateCity": "Cidade/UF",
-    "location": "Nome do local",
-    "address": "Endereco completo",
-    "attraction": "Atracao principal",
-    "localProducerName": "Nome do produtor local",
-    "localProducerContact": "Telefone do produtor local",
-    "scheduleItems": [{ "time": "HH:MM", "activity": "Atividade" }],
-    "professionals": [{ "name": "Nome", "role": "Funcao", "contact": "Telefone" }],
-    "hotels": [{ "name": "Hotel", "address": "Endereco", "contact": "Telefone", "contactPerson": "Contato", "localContact": "Celular", "gpsLink": "" }],
-    "logistics": [{ "role": "Funcao", "name": "Nome/equipe", "contact": "Telefone" }]
-  },
-  "response": "..."
-}
-`;
-
-  try {
-    const { response, modelUsed } = await chatWithDomAi({
-      messages: [{ role: "system", content: systemPrompt }, ...messages],
-      format: "json",
-      temperature: 0.2,
-      timeoutMs: OLLAMA_TIMEOUT_MS,
-    });
-
-    let raw = response.message.content.trim();
-    raw = raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "");
-    const result = JSON.parse(raw);
-
-    if (result.action === "chat") {
-      return { 
-        success: true, 
-        message: result.response || result.data?.text || "Olá! Como posso ajudar?", 
-        modelUsed,
-        actionTaken: "chat"
-      };
-    }
-
-	    if (!result.action || !result.data || (result.action !== "chat" && !result.data.eventName)) {
-	      return { success: false, message: result.response || "Comando incompleto ou evento não especificado.", raw: result };
-	    }
-
-	    const { eventName } = result.data;
-	    let eventId = 0;
-	    let actualEventName = eventName;
-
-	    if (!["create_event", "draft_event"].includes(result.action)) {
-	      const targetEvents = await db
-	        .select()
-	        .from(fichasTecnicas)
-        .where(like(fichasTecnicas.eventName, `%${eventName}%`));
-
-      if (targetEvents.length === 0) {
-        throw new Error(`Evento "${eventName}" não encontrado.`);
-      }
-
-      eventId = targetEvents[0].id;
-      actualEventName = targetEvents[0].eventName;
-    }
-
-	    // 2. Execute the action
-	    switch (result.action) {
-	      case "draft_event":
-	      case "create_event": {
-	        const draft = toEventDraft(result.data as Record<string, unknown>);
-	        if (!draft.eventName) {
-	          return {
-	            success: false,
-	            message: "Preciso pelo menos do nome do evento para montar o rascunho.",
-	            modelUsed,
-	          };
-	        }
-	        pendingEventDrafts.set(draftKey, {
-	          data: draft,
-	          createdAt: Date.now(),
-	          modelUsed,
-	        });
-	        return {
-	          success: true,
-	          message:
-	            `${result.response || "Preparei um rascunho do evento."}\n\n` +
-	            `${formatDraftSummary(draft)}\n\n` +
-	            `Se estiver tudo certo, responda "confirmar criacao". Para abortar, responda "cancelar criacao".`,
-	          modelUsed,
-	          actionTaken: "chat",
-	        };
-	      }
-      case "add_professional": {
-        const { professionalName, professionalRole, professionalContact } = result.data;
-        await db.insert(professionals).values({
-          fichaId: eventId,
-          name: professionalName || "Profissional",
-          role: professionalRole || "Staff",
-          contact: professionalContact || "",
-        });
-        return {
-          success: true,
-          message: result.response || `✅ Profissional ${professionalName} adicionado como ${professionalRole || "Staff"} no evento ${actualEventName}.`,
-          modelUsed,
-        };
-      }
-
-      case "update_ficha_status": {
-        const { status } = result.data;
-        const validStatus = status === "published" ? "published" : "draft";
-        const { updateFicha } = await import("./db");
-        await updateFicha(eventId, { status: validStatus });
-        return {
-          success: true,
-          message: result.response || `✅ Status do evento ${actualEventName} alterado para ${validStatus === "published" ? "Publicado" : "Rascunho"}.`,
-          modelUsed,
-        };
-      }
-
-      case "add_hotel": {
-        const { hotelName, hotelAddress, hotelContact } = result.data;
-        const { hotels } = await import("../drizzle/schema");
-        await db.insert(hotels).values({
-          fichaId: eventId,
-          name: hotelName || "Hospedagem",
-          address: hotelAddress || "",
-          contact: hotelContact || "",
-        });
-        return {
-          success: true,
-          message: result.response || `✅ Hospedagem "${hotelName}" adicionada ao evento ${actualEventName}.`,
-          modelUsed,
-        };
-      }
-
-      case "add_logistics": {
-        const { logisticsRole, logisticsName, logisticsContact } = result.data;
-        const { logistics } = await import("../drizzle/schema");
-        await db.insert(logistics).values({
-          fichaId: eventId,
-          role: logisticsRole || "Logística",
-          name: logisticsName || "",
-          contact: logisticsContact || "",
-        });
-        return {
-          success: true,
-          message: result.response || `✅ Item de logística "${logisticsRole} - ${logisticsName}" adicionado ao evento ${actualEventName}.`,
-          modelUsed,
-        };
-      }
-
-      case "add_schedule_item": {
-        const { time, activity } = result.data;
-        const { scheduleItems } = await import("../drizzle/schema");
-        await db.insert(scheduleItems).values({
-          fichaId: eventId,
-          time: time || "",
-          activity: activity || "",
-          sortOrder: 99,
-        });
-        return {
-          success: true,
-          message: result.response || `✅ Item de cronograma ("${activity}") adicionado ao evento ${actualEventName}.`,
-          modelUsed,
-        };
-      }
-
-      case "update_event_info": {
-        const { field, value } = result.data;
-        const { updateFicha } = await import("./db");
-        const updateData: any = {};
-        if (["location", "eventDate", "attraction", "address"].includes(field)) {
-          updateData[field] = value;
-          await updateFicha(eventId, updateData);
-          return {
-            success: true,
-            message: result.response || `✅ Informação "${field}" do evento ${actualEventName} atualizada para "${value}".`,
-            modelUsed,
-          };
-        }
-        throw new Error(`Campo "${field}" não suportado para atualização.`);
-      }
-
-      default:
-        return { success: false, message: result.response || "Ação não suportada pelo modelo.", raw: result };
-    }
-  } catch (error: any) {
-    console.error("[DOM AI Error]", error);
-    const heuristicDraft = latestUserMessage ? extractDraftFromCreateIntent(latestUserMessage) : null;
-    if (heuristicDraft) {
-      pendingEventDrafts.set(draftKey, {
-        data: heuristicDraft,
-        createdAt: Date.now(),
-        modelUsed: "heuristic-fallback",
-      });
+  if (latestUserMessage) {
+    const normalized = normalizeIntentText(latestUserMessage);
+    if (normalized.includes("preencher ficha") || normalized.includes("ficha tecnica") || normalized.includes("ficha técnica")) {
       return {
         success: true,
         message:
-          `O DOM AI demorou ou falhou, mas montei um rascunho inicial a partir do seu texto.\n\n` +
-          `${formatDraftSummary(heuristicDraft)}\n\n` +
-          `Se estiver tudo certo, responda "confirmar criacao". Para abortar, responda "cancelar criacao".`,
-        modelUsed: "heuristic-fallback",
+          "Para preencher a ficha, cole o texto do WhatsApp ou do checklist na tela da ficha técnica. Eu vou organizar os campos automaticamente.",
+        modelUsed: "local-rules",
         actionTaken: "chat",
       };
     }
-    throw new Error("Erro ao processar comando do DOM AI: " + error.message);
+    if (normalized.includes("montar cronograma") || normalized.includes("cronograma")) {
+      return {
+        success: true,
+        message:
+          "Posso montar o cronograma na ficha técnica. Se quiser, use o formulário do evento e eu te ajudo a organizar os horários e atividades.",
+        modelUsed: "local-rules",
+        actionTaken: "chat",
+      };
+    }
+    if (normalized.includes("adicionar profissional") || normalized.includes("profissional")) {
+      return {
+        success: true,
+        message:
+          "Para adicionar profissionais, abra a ficha do evento e inclua nome, função e contato. Se quiser criar um rascunho completo, eu posso montar um novo evento para você.",
+        modelUsed: "local-rules",
+        actionTaken: "chat",
+      };
+    }
+    if (normalized.includes("hotel")) {
+      return {
+        success: true,
+        message:
+          "Para hotéis, eu posso sugerir a estrutura ideal da ficha: nome, endereço, contato, responsável local e link de GPS.",
+        modelUsed: "local-rules",
+        actionTaken: "chat",
+      };
+    }
+    if (normalized.includes("logistica") || normalized.includes("logística")) {
+      return {
+        success: true,
+        message:
+          "Na logística, o ideal é registrar função, nome e contato de cada responsável. Se quiser, eu monto um rascunho completo do evento com essa estrutura.",
+        modelUsed: "local-rules",
+        actionTaken: "chat",
+      };
+    }
   }
+
+  return {
+    success: true,
+    message:
+      `Estou sem modelo externo agora, mas ainda posso ajudar com rascunhos e regras locais.\n\n` +
+      `Eventos cadastrados hoje: ${eventNamesContext}.\n` +
+      `Se quiser criar um rascunho completo, diga "criar evento" com nome, data ou cidade. Se quiser fechar a conversa, diga "cancelar criacao".`,
+    modelUsed: "local-rules",
+    actionTaken: "chat",
+  };
 }
 
 export async function parseFichaTextWithAi(text: string) {
-  const systemPrompt = `
-Você é o DOM AI, especialista sênior em extração de dados logísticos para eventos.
-Sua tarefa é ler mensagens de WhatsApp, checklists e e-mails e extrair informações para uma ficha técnica.
-
-FORMATO OBRIGATÓRIO (JSON APENAS):
-{
-  "eventName": "NOME DO EVENTO (EM MAIÚSCULAS)",
-  "eventDate": "YYYY-MM-DD",
-  "location": "NOME DO LOCAL/VENUE",
-  "address": "ENDEREÇO COMPLETO",
-  "attraction": "NOME DO ARTISTA/BANDA PRINCIPAL",
-  "localProducerName": "NOME DO PRODUTOR LOCAL",
-  "localProducerContact": "TELEFONE DO PRODUTOR LOCAL",
-  "professionals": [
-    { "name": "NOME", "role": "FUNÇÃO (SOM, LUZ, LED, CAMARIM, GERADOR, MOTORISTA)", "contact": "TELEFONE" }
-  ],
-  "hotels": [
-    { "name": "NOME HOTEL", "address": "ENDEREÇO", "contact": "TEL RECEPÇÃO", "contactPerson": "NOME CONTATO", "localContact": "CEL CONTATO", "gpsLink": "" }
-  ],
-  "logistics": [
-    { "role": "CARGO (CARREGADORES, TRANSPORTE, SEGURANÇA)", "name": "NOME", "contact": "TELEFONE" }
-  ],
-  "scheduleItems": [
-    { "time": "HH:MM", "activity": "DESCRIÇÃO DA ATIVIDADE" }
-  ]
-}
-
-REGRAS CRÍTICAS:
-1. Responda APENAS com o JSON.
-2. Formate a DATA como YYYY-MM-DD. Se o texto disser "20 de Maio", assuma o ano corrente (2026).
-3. CATEGORIZAÇÃO DE EQUIPE:
-   - Profissionais Técnicos (Som, Luz, Produtor Executivo, Backline) -> "professionals"
-   - Equipe de Apoio (Carregadores, Motoristas, Seguranças) -> "logistics"
-   - Se houver "Produtor Local", coloque no campo "localProducerName".
-4. Se uma informação for "Produtor: João (22) 99999", extraia o nome "João" e o contato "(22) 99999".
-5. Se não encontrar uma informação, deixe string vazia "" ou array vazio [].
-`;
-
-  try {
-    const { response } = await chatWithDomAi({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: text },
-      ],
-      format: "json",
-      temperature: 0.1,
-      timeoutMs: OLLAMA_TIMEOUT_MS,
+  const eventNameMatch = text.match(/(?:evento|show|festival|festa)\s+(?:chamado|de)?\s*["']?([^"\n,]+)["']?/i);
+  const dateMatch = text.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+  const cityMatch = text.match(/(?:em|na|no)\s+([A-Za-zÀ-ÿ\s-]+?)(?:,|\.|$)/i);
+  const attractionMatch = text.match(/(?:atração|atracao|artista|banda)\s*:?\s*([A-Za-zÀ-ÿ0-9\s-]+?)(?:,|\.|$)/i);
+  const phoneMatch = text.match(/(\(?\d{2}\)?\s?\d{4,5}-?\d{4})/);
+  const lines = text.split(/\n+/).map(line => line.trim()).filter(Boolean);
+  const scheduleItems = lines
+    .filter(line => /\b\d{1,2}:\d{2}\b/.test(line))
+    .slice(0, 8)
+    .map(line => {
+      const [time, ...rest] = line.split(/\s+/);
+      return { time: time.replace(/\D/g, "").padStart(4, "0").replace(/^(\d{2})(\d{2})$/, "$1:$2"), activity: rest.join(" ").replace(/^[-:]\s*/, "") || "Atividade" };
     });
 
-    let raw = response.message.content.trim();
-    raw = raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "");
-    return JSON.parse(raw);
-  } catch (err: any) {
-    throw new Error("Erro ao interpretar texto: " + err.message);
-  }
+  return {
+    eventName: (eventNameMatch?.[1] || "EVENTO RASCUNHO DOM AI").trim().toUpperCase(),
+    eventDate: dateMatch?.[1] || "",
+    location: cityMatch?.[1]?.trim() || "",
+    address: "",
+    attraction: attractionMatch?.[1]?.trim() || "",
+    localProducerName: "",
+    localProducerContact: phoneMatch?.[1] || "",
+    professionals: [],
+    hotels: [],
+    logistics: [],
+    scheduleItems: scheduleItems.length > 0 ? scheduleItems : [{ time: "09:00", activity: "Abertura de operação" }],
+  };
 }
 
 export async function suggestGpsLink(locationName: string, address: string) {
-  const systemPrompt = `
-Você é um especialista em geolocalização. O usuário fornecerá um nome de local e, opcionalmente, um endereço.
-Sua tarefa é retornar um JSON com os campos:
-- "searchQuery": os termos ideais para busca no Google Maps.
-- "refinedName": o nome formal e exato do local.
-- "refinedAddress": o endereço completo, formal e exato do local (Logradouro, número, bairro, cidade, estado, CEP se disponível).
-Não invente coordenadas.
-
-Exemplo:
-Entrada: { "name": "Arena DOM", "address": "Silva Jardim" }
-Saída: { "searchQuery": "Arena DOM, Silva Jardim, RJ", "refinedName": "Arena DOM", "refinedAddress": "Rua Silva Jardim, 123 - Centro, Silva Jardim - RJ, 28820-000" }
-`;
-
-  try {
-    const { response } = await chatWithDomAi({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: JSON.stringify({ name: locationName, address }) },
-      ],
-      format: "json",
-      temperature: 0.1,
-      timeoutMs: OLLAMA_TIMEOUT_MS,
-    });
-
-    let raw = response.message.content.trim();
-    raw = raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "");
-    const result = JSON.parse(raw);
-    const query = encodeURIComponent(result.searchQuery || `${locationName} ${address}`);
-    return { 
-      query: result.searchQuery,
-      refinedName: result.refinedName,
-      refinedAddress: result.refinedAddress,
-      url: `https://www.google.com/maps/search/?api=1&query=${query}` 
-    };
-  } catch (err: any) {
-    // Fallback to simple query
-    const query = encodeURIComponent(`${locationName} ${address}`);
-    return { query: `${locationName} ${address}`, url: `https://www.google.com/maps/search/?api=1&query=${query}` };
-  }
+  const query = `${locationName} ${address}`.trim();
+  const encoded = encodeURIComponent(query);
+  return {
+    query,
+    refinedName: locationName.trim(),
+    refinedAddress: address.trim(),
+    url: `https://www.google.com/maps/search/?api=1&query=${encoded}`,
+  };
 }

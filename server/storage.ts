@@ -9,7 +9,7 @@ export const s3Client = new S3Client({
     accessKeyId: ENV.s3AccessKey,
     secretAccessKey: ENV.s3SecretKey,
   },
-  forcePathStyle: true, // Required for MinIO
+  forcePathStyle: ENV.s3ForcePathStyle, // MinIO local on, S3-compatible VPS buckets can disable it
 });
 
 export async function ensureBucket() {

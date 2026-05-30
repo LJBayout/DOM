@@ -12,6 +12,11 @@ export default function AdminPanel() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isMobile, setIsMobile] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number; name: string }>({
+    open: false,
+    id: 0,
+    name: "",
+  });
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -33,11 +38,21 @@ export default function AdminPanel() {
 
   const deleteMutation = trpc.ficha.delete.useMutation({
     onSuccess: () => {
-      toast.success("Evento excluído.");
+      toast.success("Evento desativado.");
+      setDeleteDialog({ open: false, id: 0, name: "" });
       refetch();
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const openDeleteDialog = (id: number, name: string) => {
+    setDeleteDialog({ open: true, id, name });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteDialog.id) return;
+    deleteMutation.mutate({ id: deleteDialog.id });
+  };
 
   if (authLoading || isLoading) {
     return (
@@ -147,13 +162,11 @@ export default function AdminPanel() {
                           <IconButton icon={Eye} onClick={() => navigate(`/ficha/${ficha.id}`)} color="var(--gold)" />
                           <IconButton icon={Pencil} onClick={() => navigate(`/ficha/${ficha.id}/editar`)} color="white" />
                           {!ficha.deletedAt && (
-                            <IconButton 
-                              icon={Trash2} 
-                              onClick={() => {
-                                if(confirm(`Excluir ${ficha.eventName}?`)) deleteMutation.mutate({ id: ficha.id });
-                              }} 
-                              color="#ff4444" 
-                            />
+                          <IconButton 
+                            icon={Trash2} 
+                            onClick={() => openDeleteDialog(ficha.id, ficha.eventName)} 
+                            color="#ff4444" 
+                          />
                           )}
                         </div>
                       </td>
@@ -201,13 +214,13 @@ export default function AdminPanel() {
                   <button onClick={() => navigate(`/ficha/${ficha.id}`)} style={mobileActionStyle}><Eye size={16} /> Ver</button>
                   <button onClick={() => navigate(`/ficha/${ficha.id}/editar`)} style={mobileActionStyle}><Pencil size={16} /> Editar</button>
                   {!ficha.deletedAt && (
-                    <button 
-                      onClick={() => { if(confirm(`Excluir ${ficha.eventName}?`)) deleteMutation.mutate({ id: ficha.id }); }} 
-                      style={{ ...mobileActionStyle, color: "#ff4444" }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
+                  <button 
+                    onClick={() => openDeleteDialog(ficha.id, ficha.eventName)} 
+                    style={{ ...mobileActionStyle, color: "#ff4444" }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
                 </div>
               </div>
             ))}
@@ -221,12 +234,47 @@ export default function AdminPanel() {
         )}
       </main>
 
+      {deleteDialog.open && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120, padding: "1rem" }}>
+          <div style={{ width: "100%", maxWidth: "420px", background: "var(--card)", border: "1px solid rgba(212,175,55,0.35)", borderRadius: "12px", boxShadow: "0 20px 50px rgba(0,0,0,0.45)", overflow: "hidden" }}>
+            <div style={{ padding: "1rem 1.1rem", background: "var(--ink)", borderBottom: "1px solid var(--border)" }}>
+              <p style={{ margin: 0, color: "var(--gold)", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                Confirmar exclusão
+              </p>
+            </div>
+            <div style={{ padding: "1.1rem" }}>
+              <p style={{ margin: 0, color: "var(--foreground)", fontFamily: "var(--font-sans)", fontSize: "0.9rem", lineHeight: 1.5 }}>
+                Desativar o evento "{deleteDialog.name}"?
+              </p>
+              <p style={{ margin: "0.5rem 0 0", color: "rgba(255,255,255,0.68)", fontFamily: "var(--font-sans)", fontSize: "0.75rem" }}>
+                O evento continuará no painel como desativado.
+              </p>
+            </div>
+            <div style={{ padding: "0.9rem 1.1rem 1.1rem", display: "flex", justifyContent: "flex-end", gap: "0.6rem" }}>
+              <button
+                type="button"
+                onClick={() => setDeleteDialog({ open: false, id: 0, name: "" })}
+                style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--foreground)", borderRadius: "8px", padding: "0.55rem 0.9rem", fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase", cursor: "pointer" }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleteMutation.isPending}
+                style={{ background: "var(--gold)", border: "1px solid var(--gold)", color: "var(--ink)", borderRadius: "8px", padding: "0.55rem 0.9rem", fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase", cursor: deleteMutation.isPending ? "not-allowed" : "pointer", opacity: deleteMutation.isPending ? 0.7 : 1 }}
+              >
+                Desativar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <footer style={{ padding: "4rem 1.25rem 2rem", borderTop: "1px solid var(--border)", background: "var(--background)", textAlign: "center" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: "0.9rem", fontWeight: 800, color: "var(--gold)", letterSpacing: "0.05em" }}>DOM PRODUÇÕES</span>
-            <span style={{ color: "var(--border)" }}>|</span>
-            <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)", opacity: 0.8 }}>CIS LLC</span>
           </div>
           <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", color: "rgba(255, 255, 255, 0.3)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
             Macaé • MIT LICENSE

@@ -11,9 +11,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "pnpm dlx drizzle-kit@0.31.5 push:mysql",
-    "seed:internet": "tsx scripts/seed_internet_events.ts",
-    "ai:model:build": "docker compose exec ollama ollama create dom-ai -f /app/Modelfile && docker compose exec ollama sh -lc 'ollama rm llama3.2:3b || true; ollama rm llama3.2:1b || true'",
-    "ai:model:list": "docker compose exec ollama ollama list"
+    "seed:internet": "tsx scripts/seed_internet_events.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.907.0",
@@ -69,7 +67,6 @@
     "mysql2": "^3.15.0",
     "nanoid": "^5.1.5",
     "next-themes": "^0.4.6",
-    "ollama": "^0.6.3",
     "react": "^19.2.1",
     "react-day-picker": "^9.11.1",
     "react-dom": "^19.2.1",

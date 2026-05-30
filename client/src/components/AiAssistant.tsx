@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Bot, Sparkles, Send, Loader2, User, X, Minimize2, Maximize2 } from "lucide-react";
+import { Bot, Sparkles, User, X, Minimize2, Maximize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Message {
@@ -9,11 +9,38 @@ interface Message {
   content: string;
 }
 
-export function AiAssistant({ inline = false }: { inline?: boolean }) {
+type QuickAction = {
+  id: string;
+  label: string;
+  prompt: string;
+};
+
+const quickActions: QuickAction[] = [
+  {
+    id: "draft-event",
+    label: "Criar rascunho",
+    prompt: "criar rascunho de evento completo"
+  },
+  {
+    id: "open-guide",
+    label: "Como usar o aplicativo (GUIA)",
+    prompt: ""
+  },
+];
+
+export function AiAssistant({
+  inline = false,
+  onOpenGuide,
+}: {
+  inline?: boolean;
+  onOpenGuide?: () => void;
+}) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Olá! Eu sou o DOM AI. Posso ajudar nas fichas técnicas e também criar um mock de evento quando você quiser testar." }
+    {
+      role: "assistant",
+      content: "Olá! Eu sou o DOM BOT. Clique em \"Criar rascunho\"."
+    }
   ]);
-  const [input, setInput] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   
@@ -47,17 +74,70 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
     }
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || processCommand.isPending) return;
+  useEffect(() => {
+    const closeBot = () => setIsOpen(false);
+    window.addEventListener("dom-bot-close", closeBot);
+    return () => window.removeEventListener("dom-bot-close", closeBot);
+  }, []);
 
-    const userMessage: Message = { role: "user", content: input };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
-    setInput("");
+  const runQuickAction = (action: QuickAction) => {
+    if (action.id === "open-guide") {
+      setMessages(prev => [...prev, { role: "user", content: action.label }]);
+      onOpenGuide?.();
+      setMessages(prev => [...prev, { role: "assistant", content: "Abrindo o guia do aplicativo agora." }]);
+      return;
+    }
 
-    processCommand.mutate({ messages: newMessages });
+    const visibleMessages = [...messages, { role: "user" as const, content: action.label }];
+    const apiMessages = [...messages, { role: "user" as const, content: action.prompt }];
+    setMessages(visibleMessages);
+    if (action.id === "draft-event") {
+      setIsOpen(false);
+      resetConversation();
+    }
+    processCommand.mutate({ messages: apiMessages });
   };
+
+  const resetConversation = () => {
+    setMessages([
+      {
+        role: "assistant",
+        content: "Olá! Eu sou o DOM BOT. Clique em \"Criar rascunho\"."
+      }
+    ]);
+  };
+
+  const TextOptions = () => (
+    <div style={{
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "6px",
+      marginTop: "4px"
+    }}>
+      {quickActions.map((action) => (
+        <button
+          key={action.id}
+          type="button"
+          onClick={() => runQuickAction(action)}
+          disabled={processCommand.isPending}
+          style={{
+            background: "transparent",
+            border: "none",
+            borderBottom: "1px solid rgba(212,175,55,0.55)",
+            color: "var(--gold)",
+            cursor: processCommand.isPending ? "not-allowed" : "pointer",
+            fontFamily: "var(--font-sans)",
+            fontSize: "0.8rem",
+            fontWeight: 700,
+            padding: "2px 0",
+            opacity: processCommand.isPending ? 0.55 : 1,
+          }}
+        >
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
 
   if (inline) {
     return (
@@ -67,83 +147,48 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
           backdropFilter: "blur(12px)",
           border: "1px solid rgba(255, 215, 0, 0.4)",
           borderRadius: "20px",
-          padding: "6px 10px",
+          padding: "16px",
           display: "flex",
-          alignItems: "center",
-          gap: "8px",
+          flexDirection: "column",
+          gap: "12px",
           boxShadow: "0 10px 30px rgba(0,0,0,0.3), 0 0 20px rgba(255,215,0,0.1)",
           transition: "all 0.3s ease",
           width: "100%",
-          maxWidth: "700px",
+          maxWidth: "760px",
           margin: "0 auto",
         }}
         >
-          <div style={{ 
-            background: "linear-gradient(135deg, #FFD700 0%, #B8860B 100%)",
-            borderRadius: "14px",
-            padding: "6px 12px",
-            display: "flex", 
-            alignItems: "center", 
-            gap: "6px",
-            boxShadow: "0 2px 10px rgba(184, 134, 11, 0.4)",
-            flexShrink: 0,
-          }}>
-            <Sparkles size={16} color="black" className="animate-pulse" />
-            <span style={{ 
-              fontFamily: "var(--font-serif)", 
-              fontSize: "0.7rem", 
-              fontWeight: 900, 
-              textTransform: "uppercase", 
-              letterSpacing: "0.05em",
-              color: "black",
-              display: "var(--show-dom-ai, inline-block)"
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{
+              background: "linear-gradient(135deg, #FFD700 0%, #B8860B 100%)",
+              borderRadius: "14px",
+              padding: "6px 12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "0 2px 10px rgba(184, 134, 11, 0.4)",
+              flexShrink: 0,
             }}>
-              <span className="hidden sm:inline">DOM AI</span>
-              <span className="inline sm:hidden">AI</span>
-            </span>
+              <Sparkles size={16} color="black" className="animate-pulse" />
+              <span style={{
+                fontFamily: "var(--font-serif)",
+                fontSize: "0.7rem",
+                fontWeight: 900,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                color: "black",
+                display: "var(--show-dom-ai, inline-block)"
+              }}>
+                <span className="hidden sm:inline">DOM BOT</span>
+                <span className="inline sm:hidden">BOT</span>
+              </span>
+            </div>
+            <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.66)" }}>
+              Clique em "Criar rascunho" para gerar um evento completo.
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flex: 1, alignItems: "center", gap: "8px", minWidth: 0 }}>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="O que deseja fazer?"
-              style={{
-                background: "transparent",
-                border: "none",
-                padding: "8px 4px",
-                color: "white",
-                fontFamily: "var(--font-sans)",
-                fontSize: "0.95rem",
-                flex: 1,
-                outline: "none",
-                fontWeight: 500,
-                minWidth: 0
-              }}
-            />
-
-            <button
-              type="submit"
-              disabled={processCommand.isPending || !input.trim()}
-              style={{
-                background: "rgba(255,215,0,0.1)",
-                color: "var(--gold)",
-                border: "1px solid rgba(255,215,0,0.3)",
-                width: "36px",
-                height: "36px",
-                borderRadius: "12px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: processCommand.isPending ? "not-allowed" : "pointer",
-                transition: "all 0.2s",
-                flexShrink: 0
-              }}
-            >
-              {processCommand.isPending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-            </button>
-          </form>
+          <TextOptions />
         </div>
       </div>
     );
@@ -191,8 +236,8 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
               y: 0, 
               opacity: 1, 
               scale: 1,
-              height: isMinimized ? "60px" : "500px",
-              width: isMinimized ? "200px" : "380px"
+              height: isMinimized ? "56px" : "420px",
+              width: isMinimized ? "190px" : "330px"
             }}
             exit={{ y: 100, opacity: 0, scale: 0.9 }}
             style={{
@@ -227,10 +272,18 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
                   color: "var(--gold)",
                   fontSize: "1.1rem"
                 }}>
-                  DOM AI
+                  DOM BOT
                 </span>
               </div>
-              <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={resetConversation}
+                  style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer" }}
+                  aria-label="Reiniciar conversa"
+                  title="Reiniciar conversa"
+                >
+                  <Sparkles size={16} />
+                </button>
                 <button 
                   onClick={() => setIsMinimized(!isMinimized)}
                   style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer" }}
@@ -248,13 +301,12 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
 
             {!isMinimized && (
               <>
-                {/* Chat Messages */}
                 <div 
                   ref={scrollRef}
                   style={{ 
                     flex: 1, 
                     overflowY: "auto", 
-                    padding: "20px",
+                    padding: "18px 20px 20px",
                     display: "flex",
                     flexDirection: "column",
                     gap: "16px"
@@ -286,7 +338,7 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
                         {msg.role === "user" ? (
                           <>Você <User size={10} /></>
                         ) : (
-                          <><Bot size={10} /> DOM AI</>
+                          <><Bot size={10} /> DOM BOT</>
                         )}
                       </div>
                       <div style={{
@@ -296,10 +348,16 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
                         borderRadius: msg.role === "user" ? "16px 16px 2px 16px" : "16px 16px 16px 2px",
                         fontSize: "0.85rem",
                         lineHeight: "1.4",
-                        border: msg.role === "user" ? "none" : "1px solid rgba(255,255,255,0.1)"
+                        border: msg.role === "user" ? "none" : "1px solid rgba(255,255,255,0.1)",
+                        textAlign: "left",
                       }}>
                         {msg.content}
                       </div>
+                      {msg.role === "assistant" && i === messages.length - 1 && (
+                        <div style={{ width: "100%", marginTop: "6px" }}>
+                          <TextOptions />
+                        </div>
+                      )}
                     </motion.div>
                   ))}
                   {processCommand.isPending && (
@@ -309,58 +367,6 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
                       <div className="w-2 h-2 rounded-full bg-gold animate-bounce" style={{ animationDelay: "300ms" }} />
                     </div>
                   )}
-                </div>
-
-                {/* Input Area */}
-                <div style={{ padding: "20px", borderTop: "1px solid rgba(255,215,0,0.1)" }}>
-                  <form 
-                    onSubmit={handleSubmit}
-                    style={{
-                      display: "flex",
-                      background: "rgba(255,255,255,0.05)",
-                      borderRadius: "16px",
-                      padding: "4px",
-                      border: "1px solid rgba(255,215,0,0.1)"
-                    }}
-                  >
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="Fale comigo..."
-                      style={{
-                        flex: 1,
-                        background: "transparent",
-                        border: "none",
-                        padding: "10px 14px",
-                        color: "white",
-                        outline: "none",
-                        fontSize: "0.9rem"
-                      }}
-                    />
-                    <motion.button
-                      type="submit"
-                      disabled={processCommand.isPending || !input.trim()}
-                      style={{
-                        background: "var(--gold)",
-                        color: "black",
-                        border: "none",
-                        width: "38px",
-                        height: "38px",
-                        borderRadius: "12px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        transition: "transform 0.1s"
-                      }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Send size={18} />
-                    </motion.button>
-                  </form>
-                  
                 </div>
               </>
             )}
