@@ -125,10 +125,16 @@ export default function FichaView() {
 
       if (!uploadResp.ok) throw new Error("Falha ao hospedar arquivo.");
 
-      const fullUrl = window.location.origin + publicUrl;
-      const message = encodeURIComponent(`Olá! Segue a Ficha Técnica: ${ficha.eventName}\n\n📄 Visualizar ${type.toUpperCase()}:\n${fullUrl}`);
-
-      window.open(`https://wa.me/${finalNumber}?text=${message}`, "_blank");
+      if (type === "pdf" && navigator.canShare?.({ files: [new File([blob], filename, { type: contentType })] }) && navigator.share) {
+        await navigator.share({
+          title: `Ficha Técnica - ${ficha.eventName}`,
+          text: `Segue a Ficha Técnica: ${ficha.eventName}`,
+          files: [new File([blob], filename, { type: contentType })],
+        });
+      } else {
+        const message = encodeURIComponent(`Segue a Ficha Técnica: ${ficha.eventName}`);
+        window.open(`https://wa.me/${finalNumber}?text=${message}`, "_blank");
+      }
       setShareModal(false);
     } catch (error) {
       console.error("Error sharing:", error);
