@@ -1,11 +1,11 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, ContactRound, MapPin, UserRound, ArrowLeft, Pencil, Bed, Navigation, Plus, Printer, MessageCircle, Download, Image as ImageIcon } from "lucide-react";
+import { CalendarDays, ContactRound, MapPin, UserRound, ArrowLeft, Pencil, Bed, Navigation, Plus, Printer, Download, Lock } from "lucide-react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import html2pdf from "html2pdf.js";
-import * as htmlToImage from "html-to-image";
+import { toast } from "sonner";
 
 type AttractionFile = { name: string; url: string; key: string };
 
@@ -31,11 +31,7 @@ export default function FichaView() {
   const params = useParams<{ id: string }>();
   const fichaId = parseInt(params.id, 10);
 
-  const [shareModal, setShareModal] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [isSharing, setIsSharing] = useState(false);
-
-  const getUploadUrlMutation = trpc.storage.getUploadUrl.useMutation();
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/");
@@ -71,76 +67,41 @@ export default function FichaView() {
     );
   }
 
-  const handleExportPDF = () => {
-    window.print();
+  const showWhatsappPremiumNotice = () => {
+    toast.info("Compartilhamento via WhatsApp sera um recurso premium em desenvolvimento.");
   };
 
-  const handleWhatsAppShare = async (type: "pdf" | "jpg") => {
-    if (!phoneNumber) {
-      alert("Por favor, digite o número do WhatsApp.");
+  const handleExportPDF = async () => {
+    const printWrapper = document.querySelector(".print-only") as HTMLElement | null;
+    const printContent = document.getElementById("ficha-print-content") as HTMLElement | null;
+    if (!printWrapper || !printContent) {
+      toast.error("Conteudo da ficha nao encontrado.");
       return;
     }
 
-    setIsSharing(true);
+    const originalDisplay = printWrapper.style.display;
+    setIsExportingPdf(true);
+
     try {
-      const cleanNumber = phoneNumber.replace(/\D/g, "");
-      const finalNumber = cleanNumber.startsWith("55") ? cleanNumber : `55${cleanNumber}`;
-
-      const filename = `Ficha_${ficha.eventName.replace(/\s+/g, '_')}_${type}.${type}`;
-      const contentType = type === "pdf" ? "application/pdf" : "image/jpeg";
-
-      const { publicUrl, proxyUploadUrl } = await getUploadUrlMutation.mutateAsync({
-        filename,
-        contentType
-      });
-
-      const element = document.querySelector(".print-only") as HTMLElement;
-      if (!element) throw new Error("Conteúdo não encontrado");
-
-      const originalDisplay = element.style.display;
-      element.style.display = 'block';
-
-      let blob: Blob;
-      if (type === "pdf") {
-        blob = await (html2pdf() as any).from(element).set({
-          margin: 10,
+      printWrapper.style.display = "block";
+      const filename = `Ficha_${ficha.eventName.replace(/\s+/g, "_")}_completa.pdf`;
+      await (html2pdf() as any)
+        .set({
           filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        }).output('blob');
-      } else {
-        const dataUrl = await htmlToImage.toJpeg(element, { quality: 0.95, backgroundColor: 'white' });
-        const response = await fetch(dataUrl);
-        blob = await response.blob();
-      }
-
-      element.style.display = originalDisplay;
-
-      const uploadResp = await fetch(proxyUploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": contentType },
-        body: blob
-      });
-
-      if (!uploadResp.ok) throw new Error("Falha ao hospedar arquivo.");
-
-      if (type === "pdf" && navigator.canShare?.({ files: [new File([blob], filename, { type: contentType })] }) && navigator.share) {
-        await navigator.share({
-          title: `Ficha Técnica - ${ficha.eventName}`,
-          text: `Segue a Ficha Técnica: ${ficha.eventName}`,
-          files: [new File([blob], filename, { type: contentType })],
-        });
-      } else {
-        const message = encodeURIComponent(`Segue a Ficha Técnica: ${ficha.eventName}`);
-        window.open(`https://wa.me/${finalNumber}?text=${message}`, "_blank");
-      }
-      setShareModal(false);
+          margin: [10, 10, 10, 10],
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, windowWidth: 1240 },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+        })
+        .from(printContent)
+        .save();
     } catch (error) {
-      console.error("Error sharing:", error);
-      alert("Erro ao compartilhar. Tente novamente.");
+      console.error("Error exporting PDF:", error);
+      toast.error("Erro ao gerar PDF completo.");
     } finally {
-      setIsSharing(false);
+      printWrapper.style.display = originalDisplay;
+      setIsExportingPdf(false);
     }
   };
 
@@ -160,18 +121,22 @@ export default function FichaView() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <div className="hidden sm:flex" style={{ gap: "0.75rem" }}>
               <button
-                onClick={() => setShareModal(true)}
-                style={{ padding: "0.5rem 1rem", background: "transparent", color: "#25D366", border: "1px solid #25D366", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
+                type="button"
+                onClick={showWhatsappPremiumNotice}
+                title="Recurso premium em desenvolvimento"
+                style={{ padding: "0.5rem 1rem", background: "rgba(212,175,55,0.08)", color: "var(--gold)", border: "1px solid rgba(212,175,55,0.35)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
               >
-                <MessageCircle size={12} />
-                WhatsApp
+                <Lock size={12} />
+                WhatsApp Premium
               </button>
               <button
+                type="button"
                 onClick={handleExportPDF}
+                disabled={isExportingPdf}
                 style={{ padding: "0.5rem 1rem", background: "transparent", color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
               >
                 <Printer size={12} />
-                PDF
+                {isExportingPdf ? "Gerando..." : "PDF"}
               </button>
             </div>
             {isAdmin && (
@@ -193,11 +158,11 @@ export default function FichaView() {
         <div id="ficha-print-content" style={{
           background: "white",
           color: "#111",
-          minHeight: "297mm",
+          minHeight: "100%",
           padding: "15mm 15mm",
           fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
           position: "relative",
-          overflow: "hidden"
+          overflow: "visible"
         }}>
           {/* Watermark Background */}
           <div style={{
@@ -352,7 +317,7 @@ export default function FichaView() {
             )}
 
             {/* Footer */}
-            <div style={{ position: "absolute", bottom: "0", left: "0", right: "0", textAlign: "center", borderTop: "1px solid #eee", paddingTop: "10px", color: "#999", fontSize: "10px" }}>
+            <div style={{ textAlign: "center", borderTop: "1px solid #eee", paddingTop: "10px", color: "#999", fontSize: "10px", marginTop: "18px" }}>
               DOM PRODUÇÕES E EVENTOS — DOCUMENTO CONFIDENCIAL — GERADO EM {new Date().toLocaleDateString("pt-BR")}
             </div>
 
@@ -458,59 +423,6 @@ export default function FichaView() {
         </main>
       </div>
 
-      {/* WhatsApp Share Modal */}
-      {shareModal && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.25rem", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: "var(--ink)", width: "100%", maxWidth: "450px", padding: "2.5rem", borderRadius: "var(--radius)", border: "1px solid var(--gold)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
-              <div style={{ background: "#25D366", padding: "0.5rem", borderRadius: "10px", color: "white" }}>
-                <MessageCircle size={24} />
-              </div>
-              <h2 style={{ fontFamily: "var(--font-serif)", color: "white", fontSize: "1.5rem", margin: 0, fontWeight: 800 }}>Compartilhar</h2>
-            </div>
-            <p style={{ fontFamily: "var(--font-sans)", color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", marginBottom: "2rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Envie a ficha técnica via WhatsApp</p>
-
-            <div style={{ marginBottom: "2rem" }}>
-              <label style={{ display: "block", color: "var(--gold)", fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", marginBottom: "0.5rem", letterSpacing: "0.1em" }}>Número do WhatsApp (com DDD)</label>
-              <input
-                autoFocus
-                type="text"
-                placeholder="Ex: 22 992630265"
-                value={phoneNumber}
-                onChange={e => setPhoneNumber(e.target.value)}
-                style={{ width: "100%", padding: "1rem", background: "rgba(255,255,255,0.05)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", color: "white", fontFamily: "var(--font-sans)", fontSize: "1rem" }}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <button
-                type="button"
-                disabled={isSharing}
-                onClick={() => handleWhatsAppShare("pdf")}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", width: "100%", padding: "1rem", background: "white", color: "var(--ink)", border: "none", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.8rem", fontWeight: 800, textTransform: "uppercase", cursor: "pointer", opacity: isSharing ? 0.6 : 1 }}
-              >
-                {isSharing ? "Gerando..." : <><Download size={18} /> Enviar como PDF</>}
-              </button>
-              <button
-                type="button"
-                disabled={isSharing}
-                onClick={() => handleWhatsAppShare("jpg")}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", width: "100%", padding: "1rem", background: "var(--gold)", color: "var(--ink)", border: "none", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.8rem", fontWeight: 800, textTransform: "uppercase", cursor: "pointer", opacity: isSharing ? 0.6 : 1 }}
-              >
-                {isSharing ? "Gerando..." : <><ImageIcon size={18} /> Enviar como Foto (JPG)</>}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShareModal(false)}
-                style={{ width: "100%", marginTop: "0.5rem", padding: "0.8rem", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", cursor: "pointer", textDecoration: "underline" }}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Mobile Floating Action Bar */}
       <div className="sm:hidden no-print" style={{ 
         position: "fixed", 
@@ -525,18 +437,21 @@ export default function FichaView() {
         zIndex: 100 
       }}>
         <button
-          onClick={() => setShareModal(true)}
-          style={{ flex: 1, padding: "0.8rem", background: "#25D366", color: "white", border: "none", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.75rem", fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+          type="button"
+          onClick={showWhatsappPremiumNotice}
+          style={{ flex: 1, padding: "0.8rem", background: "rgba(212,175,55,0.08)", color: "var(--gold)", border: "1px solid rgba(212,175,55,0.35)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.75rem", fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
         >
-          <MessageCircle size={18} />
-          Enviar WP
+          <Lock size={18} />
+          WP Premium
         </button>
         <button
+          type="button"
           onClick={handleExportPDF}
-          style={{ padding: "0.8rem 1.2rem", background: "transparent", color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.75rem", fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+          disabled={isExportingPdf}
+          style={{ padding: "0.8rem 1.2rem", background: "transparent", color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-sans)", fontSize: "0.75rem", fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", opacity: isExportingPdf ? 0.7 : 1 }}
         >
           <Printer size={18} />
-          PDF
+          {isExportingPdf ? "Gerando..." : "PDF"}
         </button>
       </div>
     </div>
