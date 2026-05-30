@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, Eye, MapPin, Pencil, Plus, Trash2, FileText, X, UserRound, Sparkles } from "lucide-react";
+import { CalendarDays, Eye, MapPin, Pencil, Plus, Trash2, FileText, X, UserRound, Sparkles, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -33,14 +33,6 @@ export default function Dashboard() {
     eventName: "",
     pdfs: [],
     id: 0,
-  });
-
-  const getUploadUrlMutation = trpc.storage.getUploadUrl.useMutation();
-  const updatePdfsMutation = trpc.ficha.updatePdfs.useMutation({
-    onSuccess: () => {
-      toast.success("Riders atualizados.");
-      refetch();
-    }
   });
 
   useEffect(() => {
@@ -127,31 +119,8 @@ export default function Dashboard() {
     }
   };
 
-  const handleQuickPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !ridersModal.id) return;
-
-    const toastId = toast.loading("Enviando PDF...");
-    try {
-      const { url, publicUrl, proxyUploadUrl, key } = await getUploadUrlMutation.mutateAsync({
-        filename: file.name,
-        contentType: file.type,
-      });
-
-      const resp = await fetch(url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-      if (!resp.ok) {
-        await fetch(proxyUploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-      }
-
-      const updatedPdfs = [...ridersModal.pdfs, { name: file.name, url: publicUrl, key }];
-      await updatePdfsMutation.mutateAsync({ id: ridersModal.id, pdfs: JSON.stringify(updatedPdfs) });
-      
-      setRidersModal(prev => ({ ...prev, pdfs: updatedPdfs }));
-      toast.dismiss(toastId);
-    } catch (err) {
-      toast.error("Falha no upload");
-      toast.dismiss(toastId);
-    }
+  const showPremiumPdfNotice = () => {
+    toast.info("Adicionar PDF sera um recurso premium em desenvolvimento.");
   };
 
   if (authLoading || !user) {
@@ -428,10 +397,14 @@ export default function Dashboard() {
                   {ridersModal.eventName}
                 </p>
                 {isAdmin && (
-                  <label style={{ cursor: "pointer", color: "var(--gold)", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                    <Plus size={14} /> Adicionar +PDF
-                    <input type="file" accept="application/pdf" onChange={handleQuickPdfUpload} style={{ display: "none" }} />
-                  </label>
+                  <button
+                    type="button"
+                    onClick={showPremiumPdfNotice}
+                    title="Recurso premium em desenvolvimento"
+                    style={{ cursor: "pointer", color: "var(--gold)", background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.35)", borderRadius: "8px", padding: "0.45rem 0.65rem", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", display: "flex", alignItems: "center", gap: "0.35rem", letterSpacing: "0.04em" }}
+                  >
+                    <Lock size={13} /> PDF Premium
+                  </button>
                 )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: "300px", overflowY: "auto", padding: "0.25rem" }}>

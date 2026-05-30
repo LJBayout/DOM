@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Mail, MapPin, Phone, Plus, Trash2, UserRound, ArrowLeft, Save, X, Bed, Download, Wand2 } from "lucide-react";
+import { Mail, MapPin, Phone, Plus, Trash2, UserRound, ArrowLeft, Save, X, Bed, Download, Wand2, Lock } from "lucide-react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
@@ -271,49 +271,8 @@ export default function FichaForm() {
     if (activeHotelTab >= i && activeHotelTab > 0) setActiveHotelTab(activeHotelTab - 1);
   };
  
-  const getUploadUrlMutation = trpc.storage.getUploadUrl.useMutation();
- 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.type !== "application/pdf") { toast.error("Apenas arquivos PDF são permitidos."); return; }
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error("Arquivo muito grande! O limite máximo é de 5MB para evitar lentidão no sistema.");
-      e.target.value = "";
-      return;
-    }
- 
-    try {
-      const { url, publicUrl, proxyUploadUrl, key } = await getUploadUrlMutation.mutateAsync({
-        filename: file.name,
-        contentType: file.type,
-      });
-      const resp = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
- 
-      if (!resp.ok) {
-        // Fallback to proxy upload if direct upload fails (CORS/Network)
-        console.warn("Direct upload failed, trying proxy...");
-        const proxyResp = await fetch(proxyUploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-        if (!proxyResp.ok) throw new Error("Falha no upload via proxy.");
-      }
- 
-      setAttractionFiles((prev) => [...prev, { name: file.name, url: publicUrl, key }]);
-      toast.success("PDF enviado.");
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao enviar.");
-    } finally {
-      e.target.value = "";
-    }
+  const showPremiumPdfNotice = () => {
+    toast.info("Upload de PDF sera um recurso premium em desenvolvimento.");
   };
  
   const removeFile = (key: string) => {
@@ -431,11 +390,15 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
                     ))}
                     {attractionFiles.length === 0 && <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.7rem", color: "var(--ink-faint)", fontStyle: "italic" }}>Nenhum arquivo enviado.</span>}
                   </div>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", color: "var(--gold)", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                    <Plus size={14} /> Enviar PDF
-                    <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ display: "none" }} />
-                  </label>
-                  <p style={{ fontSize: '0.6rem', color: 'var(--ink-faint)', fontStyle: 'italic', marginTop: '-0.5rem' }}>Limite máximo: 5MB por arquivo.</p>
+                  <button
+                    type="button"
+                    onClick={showPremiumPdfNotice}
+                    title="Recurso premium em desenvolvimento"
+                    style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", color: "var(--gold)", background: "rgba(var(--gold-rgb), 0.08)", border: "1px solid rgba(var(--gold-rgb), 0.35)", borderRadius: "var(--radius-sm)", padding: "0.55rem 0.75rem", fontFamily: "var(--font-sans)", fontSize: "0.65rem", fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase", alignSelf: "flex-start" }}
+                  >
+                    <Lock size={14} /> PDF Premium
+                  </button>
+                  <p style={{ fontSize: '0.6rem', color: 'var(--ink-faint)', fontStyle: 'italic', marginTop: '-0.5rem' }}>Upload de PDF sera liberado em um plano premium.</p>
                 </div>
               </div>
               <div>
@@ -716,7 +679,11 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
                 <div style={{ gridColumn: "1 / -1" }}>
                   <FieldLabel>Room List (PDF)</FieldLabel>
                   <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                    <label style={{ 
+                    <button
+                      type="button"
+                      onClick={showPremiumPdfNotice}
+                      title="Recurso premium em desenvolvimento"
+                      style={{ 
                       flex: 1, 
                       display: "flex", 
                       alignItems: "center", 
@@ -731,40 +698,9 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
                       fontSize: "0.7rem",
                       color: "var(--ink-light)"
                     }}>
-                      <input 
-                        type="file" 
-                        accept="application/pdf" 
-                        style={{ display: "none" }} 
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (file.size > MAX_FILE_SIZE) {
-                            toast.error("O Room List é muito pesado! Limite: 5MB.");
-                            e.target.value = "";
-                            return;
-                          }
-                          try {
-                            const { url, publicUrl, proxyUploadUrl, key } = await getUploadUrlMutation.mutateAsync({
-                              filename: file.name,
-                              contentType: file.type,
-                            });
-                            const resp = await fetch(url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-                            
-                            if (!resp.ok) {
-                              const proxyResp = await fetch(proxyUploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-                              if (!proxyResp.ok) throw new Error("Erro via proxy");
-                            }
-
-                            updateHotelField(activeHotelTab, "roomListPdfs", publicUrl);
-                            toast.success("Room List enviada!");
-                          } catch (err) {
-                            toast.error("Erro no upload.");
-                          }
-                        }}
-                      />
-                      <Download size={14} /> {hotels[activeHotelTab].roomListPdfs ? "Alterar Room List" : "Upload Room List (PDF)"}
-                    </label>
-                    <p style={{ fontSize: '0.6rem', color: 'var(--ink-faint)', fontStyle: 'italic', marginTop: '0.25rem', width: '100%' }}>Limite: 5MB.</p>
+                      <Lock size={14} /> Room List Premium
+                    </button>
+                    <p style={{ fontSize: '0.6rem', color: 'var(--ink-faint)', fontStyle: 'italic', marginTop: '0.25rem', width: '100%' }}>Upload de Room List sera liberado em um plano premium.</p>
                     {hotels[activeHotelTab].roomListPdfs && (
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                         <span style={{ color: "var(--gold)", fontSize: "0.65rem", fontWeight: 700 }}>✓ CARREGADO</span>
