@@ -4,6 +4,7 @@ import { ArrowLeft, Eye, Pencil, Trash2, Search, Filter, Calendar, MapPin } from
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export default function AdminPanel() {
   const { user, loading: authLoading } = useAuth();
@@ -70,8 +71,11 @@ export default function AdminPanel() {
               PAINEL <span style={{ color: "var(--gold)" }}>ADMIN</span>
             </h1>
           </div>
-          <div style={{ fontSize: "0.55rem", color: "var(--gold)", fontWeight: 800, textTransform: "uppercase", background: "rgba(212, 175, 55, 0.1)", padding: "0.3rem 0.6rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--gold)" }}>
-            {isMobile ? "Admin" : "Controle Total"}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <div style={{ fontSize: "0.55rem", color: "var(--gold)", fontWeight: 800, textTransform: "uppercase", background: "rgba(212, 175, 55, 0.1)", padding: "0.3rem 0.6rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--gold)" }}>
+              {isMobile ? "Admin" : "Controle Total"}
+            </div>
+            <LogoutButton />
           </div>
         </div>
       </header>

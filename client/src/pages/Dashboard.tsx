@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { AiAssistant } from "@/components/AiAssistant";
+import { LogoutButton } from "@/components/LogoutButton";
 
 function formatDate(dateStr: string) {
   if (!dateStr) return "—";
@@ -131,6 +132,7 @@ export default function Dashboard() {
             <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.6rem", color: "var(--gold)", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.8 }}>
               {isAdmin ? "Admin" : "Usuário"}
             </span>
+            <LogoutButton />
           </div>
         </div>
       </header>

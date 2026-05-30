@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Mail, MapPin, Phone, Plus, Trash2, UserRound, ArrowLeft, Save, X, Bed, Download, Wand2 } from "lucide-react";
+import { LogoutButton } from "@/components/LogoutButton";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
@@ -344,7 +345,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
           <span style={{ fontFamily: "var(--font-serif)", fontSize: "1rem", fontWeight: 800, color: "var(--gold)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
             {isEditing ? "Editar" : "Nova"} Ficha
           </span>
-          <div style={{ width: "80px" }} />
+          <LogoutButton />
         </div>
       </header>
 

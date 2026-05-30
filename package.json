@@ -12,7 +12,7 @@
     "test": "vitest run",
     "db:push": "pnpm dlx drizzle-kit@0.31.5 push:mysql",
     "seed:internet": "tsx scripts/seed_internet_events.ts",
-    "ai:model:build": "docker compose exec ollama ollama create dom-ai -f /app/Modelfile",
+    "ai:model:build": "docker compose exec ollama ollama create dom-ai -f /app/Modelfile && docker compose exec ollama sh -lc 'ollama rm llama3.2:3b || true; ollama rm llama3.2:1b || true'",
     "ai:model:list": "docker compose exec ollama ollama list"
   },
   "dependencies": {

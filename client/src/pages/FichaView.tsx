@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { CalendarDays, ContactRound, MapPin, UserRound, ArrowLeft, Pencil, Bed, Navigation, Plus, Printer, MessageCircle, Download, Image as ImageIcon } from "lucide-react";
+import { LogoutButton } from "@/components/LogoutButton";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import html2pdf from "html2pdf.js";
@@ -176,6 +177,7 @@ export default function FichaView() {
                 Editar
               </button>
             )}
+            <LogoutButton />
           </div>
         </div>
       </header>

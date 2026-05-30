@@ -11,19 +11,15 @@ interface Message {
 
 export function AiAssistant({ inline = false }: { inline?: boolean }) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Olá! Eu sou o DOM AI. Como posso ajudar com suas fichas técnicas hoje?" }
+    { role: "assistant", content: "Olá! Eu sou o DOM AI. Posso ajudar nas fichas técnicas e também criar um mock de evento quando você quiser testar." }
   ]);
   const [input, setInput] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>("");
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
-  const modelsQuery = trpc.ficha.listModels.useQuery(undefined, {
-    enabled: isOpen || inline,
-  });
 
   const processCommand = trpc.ficha.processAiCommand.useMutation({
     onSuccess: (data) => {
@@ -60,10 +56,7 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
     setMessages(newMessages);
     setInput("");
 
-    processCommand.mutate({ 
-      messages: newMessages, 
-      model: selectedModel || undefined 
-    });
+    processCommand.mutate({ messages: newMessages });
   };
 
   if (inline) {
@@ -368,25 +361,6 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
                     </motion.button>
                   </form>
                   
-                  {modelsQuery.data && modelsQuery.data.length > 0 && (
-                    <div style={{ marginTop: "12px", display: "flex", justifyContent: "center" }}>
-                      <select
-                        value={selectedModel}
-                        onChange={(e) => setSelectedModel(e.target.value)}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: "rgba(255,255,255,0.3)",
-                          fontSize: "0.65rem",
-                          outline: "none",
-                          cursor: "pointer"
-                        }}
-                      >
-                        <option value="">Inteligência: Automática</option>
-                        {modelsQuery.data.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                    </div>
-                  )}
                 </div>
               </>
             )}

@@ -2,15 +2,25 @@ import { Ollama } from "ollama";
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
 import { fichasTecnicas, professionals } from "../drizzle/schema";
-import { eq, like } from "drizzle-orm";
+import { like } from "drizzle-orm";
 
 const ollama = new Ollama({ host: ENV.ollamaUrl });
-
-// Default model priority: try each in order until one is available
-const DEFAULT_MODEL_PRIORITY = ["dom-ai", "llama3.2:3b", "llama3", "mistral", "gemma2"];
+const DOM_AI_MODEL = "dom-ai";
 const DRAFT_TTL_MS = 30 * 60 * 1000;
 const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 12000);
-const OLLAMA_MAX_ATTEMPTS = Number(process.env.OLLAMA_MAX_ATTEMPTS || 2);
+
+type DraftScheduleItem = { time: string; activity: string };
+type DraftProfessional = { name: string; role: string; contact: string };
+type DraftHotel = {
+  name: string;
+  address: string;
+  contact: string;
+  contactPerson: string;
+  localContact: string;
+  gpsLink: string;
+  roomListPdfs: string | null;
+};
+type DraftLogisticsItem = { role: string; name: string; contact: string };
 
 type EventDraftData = {
   eventName: string;
@@ -21,6 +31,10 @@ type EventDraftData = {
   stateCity: string;
   localProducerName: string;
   localProducerContact: string;
+  scheduleItems: DraftScheduleItem[];
+  professionals: DraftProfessional[];
+  hotels: DraftHotel[];
+  logistics: DraftLogisticsItem[];
 };
 
 type PendingEventDraft = {
@@ -66,9 +80,59 @@ function isCancelDraftIntent(text: string): boolean {
   return cancelTokens.some(token => normalized.includes(token));
 }
 
+function readObjectArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+    : [];
+}
+
+function compactRows<T>(items: T[], fallback: T[]): T[] {
+  return items.length > 0 ? items : fallback;
+}
+
+function toScheduleItems(value: unknown, fallback: DraftScheduleItem[]) {
+  const text = (item: Record<string, unknown>, key: string) => typeof item[key] === "string" ? item[key].trim() : "";
+  const rows = readObjectArray(value)
+    .map(item => ({ time: text(item, "time"), activity: text(item, "activity") }))
+    .filter(item => item.time || item.activity);
+  return compactRows(rows, fallback);
+}
+
+function toProfessionals(value: unknown, fallback: DraftProfessional[]) {
+  const text = (item: Record<string, unknown>, key: string) => typeof item[key] === "string" ? item[key].trim() : "";
+  const rows = readObjectArray(value)
+    .map(item => ({ name: text(item, "name"), role: text(item, "role"), contact: text(item, "contact") }))
+    .filter(item => item.name || item.role || item.contact);
+  return compactRows(rows, fallback);
+}
+
+function toHotels(value: unknown, fallback: DraftHotel[]) {
+  const text = (item: Record<string, unknown>, key: string) => typeof item[key] === "string" ? item[key].trim() : "";
+  const rows = readObjectArray(value)
+    .map(item => ({
+      name: text(item, "name"),
+      address: text(item, "address"),
+      contact: text(item, "contact"),
+      contactPerson: text(item, "contactPerson"),
+      localContact: text(item, "localContact"),
+      gpsLink: text(item, "gpsLink"),
+      roomListPdfs: null,
+    }))
+    .filter(item => item.name || item.address || item.contact);
+  return compactRows(rows, fallback);
+}
+
+function toLogistics(value: unknown, fallback: DraftLogisticsItem[]) {
+  const text = (item: Record<string, unknown>, key: string) => typeof item[key] === "string" ? item[key].trim() : "";
+  const rows = readObjectArray(value)
+    .map(item => ({ role: text(item, "role"), name: text(item, "name"), contact: text(item, "contact") }))
+    .filter(item => item.role || item.name || item.contact);
+  return compactRows(rows, fallback);
+}
+
 function toEventDraft(data: Record<string, unknown>): EventDraftData {
   const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
-  return {
+  const seededDraft = buildMockEventDraft({
     eventName: text(data.eventName),
     eventDate: text(data.eventDate),
     location: text(data.location),
@@ -77,6 +141,14 @@ function toEventDraft(data: Record<string, unknown>): EventDraftData {
     stateCity: text(data.stateCity),
     localProducerName: text(data.localProducerName),
     localProducerContact: text(data.localProducerContact),
+  });
+
+  return {
+    ...seededDraft,
+    scheduleItems: toScheduleItems(data.scheduleItems, seededDraft.scheduleItems),
+    professionals: toProfessionals(data.professionals, seededDraft.professionals),
+    hotels: toHotels(data.hotels, seededDraft.hotels),
+    logistics: toLogistics(data.logistics, seededDraft.logistics),
   };
 }
 
@@ -90,13 +162,69 @@ function formatDraftSummary(draft: EventDraftData): string {
     ["Atracao", draft.attraction || "-"],
     ["Produtor local", draft.localProducerName || "-"],
     ["Contato produtor", draft.localProducerContact || "-"],
+    ["Cronograma", `${draft.scheduleItems.length} itens`],
+    ["Profissionais", `${draft.professionals.length} contatos`],
+    ["Hotel", draft.hotels[0]?.name || "-"],
+    ["Logistica", `${draft.logistics.length} itens`],
   ];
 
   return entries.map(([label, value]) => `- ${label}: ${value}`).join("\n");
 }
 
-function unique(items: string[]): string[] {
-  return Array.from(new Set(items.filter(Boolean)));
+function buildMockEventDraft(seed: Partial<EventDraftData> = {}): EventDraftData {
+  const defaultDate = new Date();
+  defaultDate.setDate(defaultDate.getDate() + 21);
+  const eventName = seed.eventName?.trim() || "EVENTO MOCK DOM AI";
+  const eventDate = seed.eventDate?.trim() || defaultDate.toISOString().slice(0, 10);
+  const location = seed.location?.trim() || "Espaço DOM Arena";
+  const address = seed.address?.trim() || "Av. Paulista, 1000 - Bela Vista, São Paulo - SP";
+  const attraction = seed.attraction?.trim() || "Artista Teste";
+  const stateCity = seed.stateCity?.trim() || "São Paulo/SP";
+  const localProducerName = seed.localProducerName?.trim() || "Produtor Mock DOM";
+  const localProducerContact = seed.localProducerContact?.trim() || "(11) 99999-0000";
+
+  return {
+    eventName,
+    eventDate,
+    location,
+    address,
+    attraction,
+    stateCity,
+    localProducerName,
+    localProducerContact,
+    scheduleItems: seed.scheduleItems?.length ? seed.scheduleItems : [
+      { time: "09:00", activity: "Abertura de backstage" },
+      { time: "11:00", activity: "Chegada da equipe técnica" },
+      { time: "13:00", activity: "Montagem de palco, luz e áudio" },
+      { time: "16:00", activity: "Passagem de som" },
+      { time: "19:00", activity: "Abertura dos portões" },
+      { time: "22:00", activity: `Show principal: ${attraction}` },
+      { time: "23:30", activity: "Desmontagem e conferência final" },
+    ],
+    professionals: seed.professionals?.length ? seed.professionals : [
+      { name: "Coord. Técnico DOM", role: "Direção Técnica", contact: "(11) 90000-0001" },
+      { name: "Coord. Luz", role: "Iluminação", contact: "(11) 90000-0002" },
+      { name: "Coord. Áudio", role: "Áudio PA", contact: "(11) 90000-0003" },
+      { name: "Produtor Executivo", role: "Produção Executiva", contact: "(11) 90000-0004" },
+    ],
+    hotels: seed.hotels?.length ? seed.hotels : [
+      {
+        name: "Hotel Oficial Produção",
+        address: `Hotel central próximo a ${location}, ${stateCity}`,
+        contact: "(11) 4000-1000",
+        contactPerson: "Gerência de Eventos",
+        localContact: "(11) 95555-1000",
+        gpsLink: `https://maps.google.com/?q=${encodeURIComponent(`Hotel oficial ${stateCity}`)}`,
+        roomListPdfs: null,
+      },
+    ],
+    logistics: seed.logistics?.length ? seed.logistics : [
+      { role: "Produtor Local", name: localProducerName, contact: localProducerContact },
+      { role: "Transporte", name: "Equipe de Transporte", contact: "(11) 94444-2000" },
+      { role: "Segurança", name: "Coordenação de Segurança", contact: "(11) 93333-3000" },
+      { role: "Carregadores", name: "Equipe de Carga", contact: "(11) 92222-4000" },
+    ],
+  };
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
@@ -117,121 +245,66 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
   });
 }
 
-export async function listOllamaModels(): Promise<string[]> {
-  try {
-    const { models } = await ollama.list();
-    // Filter out embedding-only models
-    const embeddingKeywords = ["embed", "nomic"];
-    return models
-      .map((m) => m.name)
-      .filter((name) => !embeddingKeywords.some((k) => name.toLowerCase().includes(k)));
-  } catch (err) {
-    console.error("[Ollama] Failed to list models:", err);
-    return [];
-  }
-}
-
-async function resolveModelCandidates(preferredModel?: string): Promise<string[]> {
-  const available = await listOllamaModels();
-
-  if (available.length === 0) {
-    return unique([preferredModel || "", ...DEFAULT_MODEL_PRIORITY]);
-  }
-
-  const ordered: string[] = [];
-
-  if (preferredModel) {
-    const preferredMatch = available.find(m => m === preferredModel || m.startsWith(preferredModel));
-    if (preferredMatch) ordered.push(preferredMatch);
-  }
-
-  for (const candidate of DEFAULT_MODEL_PRIORITY) {
-    const match = available.find(m => m === candidate || m.startsWith(candidate));
-    if (match) ordered.push(match);
-  }
-
-  for (const modelName of available) {
-    if (!ordered.includes(modelName)) ordered.push(modelName);
-  }
-
-  return unique(ordered);
-}
-
 function extractDraftFromCreateIntent(text: string): EventDraftData | null {
+  if (isCancelDraftIntent(text)) return null;
+
   const normalized = normalizeIntentText(text);
-  const looksLikeCreate = normalized.includes("crie") || normalized.includes("criar evento") || normalized.includes("novo evento");
+  const looksLikeCreate =
+    (normalized.includes("cria") && normalized.includes("evento")) ||
+    normalized.includes("criar evento") ||
+    normalized.includes("novo evento") ||
+    normalized.includes("mock de evento") ||
+    normalized.includes("evento mock") ||
+    normalized.includes("evento teste") ||
+    normalized.includes("create event");
+
   if (!looksLikeCreate) return null;
 
   const nameMatch = text.match(/(?:evento chamado|evento)\s+["']?([^"',\n]+?)["']?(?:\s+para|\s+em|\s+no|\s*$)/i);
   const eventDateMatch = text.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
   const locationMatch = text.match(/(?:\s+em|\s+no|\s+na)\s+([A-Za-z0-9À-ÿ\s\-'.,]+)$/i);
 
-  const eventName = (nameMatch?.[1] || "").trim();
-  if (!eventName) return null;
-
-  return {
-    eventName,
+  return buildMockEventDraft({
+    eventName: nameMatch?.[1]?.trim() || "",
     eventDate: eventDateMatch?.[1] || "",
-    location: (locationMatch?.[1] || "").trim(),
-    address: "",
-    attraction: "",
-    stateCity: "",
-    localProducerName: "",
-    localProducerContact: "",
-  };
+    location: locationMatch?.[1]?.trim() || "",
+  });
 }
 
-async function chatWithFailover(params: {
-  preferredModel?: string;
+async function chatWithDomAi(params: {
   messages: { role: "user" | "assistant" | "system"; content: string }[];
   format?: "json";
   temperature?: number;
   timeoutMs?: number;
 }) {
-  const candidates = await resolveModelCandidates(params.preferredModel);
-  if (candidates.length === 0) {
-    throw new Error("Nenhum modelo Ollama disponível.");
+  try {
+    const response = await withTimeout(
+      ollama.chat({
+        model: DOM_AI_MODEL,
+        messages: params.messages,
+        format: params.format,
+        options: {
+          temperature: params.temperature ?? 0.2,
+        },
+      }),
+      params.timeoutMs ?? OLLAMA_TIMEOUT_MS,
+      `dom-ai:${DOM_AI_MODEL}`
+    );
+    return { response, modelUsed: DOM_AI_MODEL };
+  } catch (error: any) {
+    const msg = error?.message || String(error);
+    console.warn(`[DOM AI] Model failed: ${DOM_AI_MODEL}`, msg);
+    throw new Error(`DOM AI indisponivel: ${msg}`);
   }
-
-  const errors: string[] = [];
-  for (const candidate of candidates.slice(0, Math.max(1, OLLAMA_MAX_ATTEMPTS))) {
-    try {
-      console.log(`[Ollama] Trying model: ${candidate}`);
-      const response = await withTimeout(
-        ollama.chat({
-          model: candidate,
-          messages: params.messages,
-          format: params.format,
-          options: {
-            temperature: params.temperature ?? 0.7,
-          },
-        }),
-        params.timeoutMs ?? OLLAMA_TIMEOUT_MS,
-        `ollama:${candidate}`
-      );
-      return { response, modelUsed: candidate };
-    } catch (error: any) {
-      const msg = error?.message || String(error);
-      errors.push(`${candidate}: ${msg}`);
-      console.warn(`[Ollama] Model failed: ${candidate}`, msg);
-    }
-  }
-
-  throw new Error(`Falha em todos os modelos Ollama. Detalhes: ${errors.join(" | ")}`);
 }
 
 export async function processAiCommand(
   messages: { role: "user" | "assistant" | "system"; content: string }[],
-  model?: string,
   requesterOpenId?: string
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
 
-  const events = await db
-    .select({ id: fichasTecnicas.id, name: fichasTecnicas.eventName })
-    .from(fichasTecnicas);
-  const eventNamesList = events.map((e) => e.name).join(", ");
   const draftKey = requesterOpenId || "anonymous";
   const latestUserMessage = [...messages].reverse().find(message => message.role === "user")?.content?.trim() || "";
   const currentDraft = pendingEventDrafts.get(draftKey);
@@ -243,7 +316,7 @@ export async function processAiCommand(
   const activeDraft = pendingEventDrafts.get(draftKey);
   if (activeDraft && latestUserMessage) {
     if (isConfirmDraftIntent(latestUserMessage)) {
-      const { createFicha } = await import("./db");
+      const { createFicha, replaceHotels, replaceLogistics, replaceProfessionals, replaceScheduleItems } = await import("./db");
       const draftData = activeDraft.data;
       const fichaId = await createFicha({
         eventName: draftData.eventName || "Novo Evento",
@@ -262,10 +335,16 @@ export async function processAiCommand(
         status: "draft",
         createdByOpenId: requesterOpenId || "system",
       });
+      await Promise.all([
+        replaceScheduleItems(fichaId, draftData.scheduleItems),
+        replaceProfessionals(fichaId, draftData.professionals),
+        replaceHotels(fichaId, draftData.hotels),
+        replaceLogistics(fichaId, draftData.logistics),
+      ]);
       pendingEventDrafts.delete(draftKey);
       return {
         success: true,
-        message: `✅ Evento "${draftData.eventName || "Novo Evento"}" criado com sucesso (ID ${fichaId}). Posso continuar e montar cronograma, equipe e logistica para voce.`,
+        message: `✅ Evento "${draftData.eventName || "Novo Evento"}" criado com sucesso (ID ${fichaId}) com cronograma, equipe, hotel e logística preenchidos.`,
         modelUsed: activeDraft.modelUsed,
         actionTaken: "create_event",
       };
@@ -300,47 +379,55 @@ export async function processAiCommand(
     };
   }
 
-  const systemPrompt = `
-Você é o DOM AI, o assistente virtual inteligente da DOM Produções. 
-Você é proativo, eficiente e tem uma personalidade profissional porém amigável.
+  const events = await db
+    .select({ id: fichasTecnicas.id, name: fichasTecnicas.eventName })
+    .from(fichasTecnicas);
+  const eventNamesList = events
+    .slice(0, 20)
+    .map((e) => e.name)
+    .join(", ");
+  const eventNamesContext = eventNamesList || "nenhum evento cadastrado ainda";
 
-Sua função é ajudar na gestão de fichas técnicas de eventos. Você pode realizar ações no banco de dados ou apenas conversar com o usuário.
+  const systemPrompt = `
+Você é o DOM AI da DOM Produções.
+Você conhece este projeto: fichas técnicas de eventos, profissionais, hotéis, logística, cronogramas e status draft/published.
 
 Contexto atual:
-Eventos cadastrados: [${eventNamesList}]
+Eventos cadastrados: [${eventNamesContext}]
 
 Regras:
-1. Você DEVE responder APENAS com um objeto JSON válido.
-2. Se o usuário pedir para realizar uma ação (adicionar profissional, mudar status, etc), identifique o evento e a ação.
-3. Se o usuário estiver apenas conversando ou fazendo uma pergunta, use a ação "chat".
-4. No campo "response", coloque a mensagem que eu (o bot) devo falar para o usuário. Mesmo se fizer uma ação, explique o que fez de forma amigável.
-5. IMPORTANTE: criação de evento agora é em duas etapas. Primeiro você gera um rascunho com ação "draft_event". Nunca confirme que o evento já foi criado.
+1. Responda APENAS com JSON válido.
+2. Se o usuário pedir para criar um evento e faltar informação, produza um mock realista e completo em formato draft_event.
+3. Se o usuário estiver só conversando, use "chat".
+4. Nunca afirme que um evento foi criado de fato; a criação real só acontece depois do usuário confirmar.
+5. No campo "response", escreva uma mensagem curta e amigável.
 
-Ações possíveis:
-- "draft_event": { "eventName": "...", "eventDate": "...", "stateCity": "...", "location": "...", "address": "...", "attraction": "...", "localProducerName": "...", "localProducerContact": "..." }
-- "create_event": { "eventName": "...", "eventDate": "...", "stateCity": "...", "location": "...", "address": "...", "attraction": "...", "localProducerName": "...", "localProducerContact": "..." } (retrocompatibilidade; trate como rascunho)
-- "add_professional": { "eventName": "...", "professionalName": "...", "professionalRole": "...", "professionalContact": "..." }
-- "add_hotel": { "eventName": "...", "hotelName": "...", "hotelAddress": "...", "hotelContact": "..." }
-- "add_logistics": { "eventName": "...", "logisticsRole": "...", "logisticsName": "...", "logisticsContact": "..." }
-- "update_ficha_status": { "eventName": "...", "status": "published" | "draft" }
-- "add_schedule_item": { "eventName": "...", "time": "HH:MM", "activity": "..." }
-- "update_event_info": { "eventName": "...", "field": "location" | "eventDate" | "attraction" | "address", "value": "..." }
-- "chat": { "text": "sua resposta aqui" }
-
-Formato de resposta esperado:
+Formato de resposta:
 {
   "action": "draft_event" | "create_event" | "add_professional" | "add_hotel" | "add_logistics" | "update_ficha_status" | "add_schedule_item" | "update_event_info" | "chat",
-  "data": { ... },
-  "response": "Sua mensagem amigável aqui explicando o que fez ou respondendo à pergunta."
+  "data": {
+    "eventName": "NOME DO EVENTO",
+    "eventDate": "YYYY-MM-DD",
+    "stateCity": "Cidade/UF",
+    "location": "Nome do local",
+    "address": "Endereco completo",
+    "attraction": "Atracao principal",
+    "localProducerName": "Nome do produtor local",
+    "localProducerContact": "Telefone do produtor local",
+    "scheduleItems": [{ "time": "HH:MM", "activity": "Atividade" }],
+    "professionals": [{ "name": "Nome", "role": "Funcao", "contact": "Telefone" }],
+    "hotels": [{ "name": "Hotel", "address": "Endereco", "contact": "Telefone", "contactPerson": "Contato", "localContact": "Celular", "gpsLink": "" }],
+    "logistics": [{ "role": "Funcao", "name": "Nome/equipe", "contact": "Telefone" }]
+  },
+  "response": "..."
 }
 `;
 
   try {
-    const { response, modelUsed } = await chatWithFailover({
-      preferredModel: model,
+    const { response, modelUsed } = await chatWithDomAi({
       messages: [{ role: "system", content: systemPrompt }, ...messages],
       format: "json",
-      temperature: 0.7,
+      temperature: 0.2,
       timeoutMs: OLLAMA_TIMEOUT_MS,
     });
 
@@ -501,7 +588,7 @@ Formato de resposta esperado:
         return { success: false, message: result.response || "Ação não suportada pelo modelo.", raw: result };
     }
   } catch (error: any) {
-    console.error("[Ollama Error]", error);
+    console.error("[DOM AI Error]", error);
     const heuristicDraft = latestUserMessage ? extractDraftFromCreateIntent(latestUserMessage) : null;
     if (heuristicDraft) {
       pendingEventDrafts.set(draftKey, {
@@ -512,18 +599,18 @@ Formato de resposta esperado:
       return {
         success: true,
         message:
-          `O Ollama demorou ou falhou, mas montei um rascunho inicial a partir do seu texto.\n\n` +
+          `O DOM AI demorou ou falhou, mas montei um rascunho inicial a partir do seu texto.\n\n` +
           `${formatDraftSummary(heuristicDraft)}\n\n` +
           `Se estiver tudo certo, responda "confirmar criacao". Para abortar, responda "cancelar criacao".`,
         modelUsed: "heuristic-fallback",
         actionTaken: "chat",
       };
     }
-    throw new Error("Erro ao processar comando de IA: " + error.message);
+    throw new Error("Erro ao processar comando do DOM AI: " + error.message);
   }
 }
 
-export async function parseFichaTextWithAi(text: string, model?: string) {
+export async function parseFichaTextWithAi(text: string) {
   const systemPrompt = `
 Você é o DOM AI, especialista sênior em extração de dados logísticos para eventos.
 Sua tarefa é ler mensagens de WhatsApp, checklists e e-mails e extrair informações para uma ficha técnica.
@@ -563,8 +650,7 @@ REGRAS CRÍTICAS:
 `;
 
   try {
-    const { response } = await chatWithFailover({
-      preferredModel: model,
+    const { response } = await chatWithDomAi({
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: text },
@@ -582,7 +668,7 @@ REGRAS CRÍTICAS:
   }
 }
 
-export async function suggestGpsLink(locationName: string, address: string, model?: string) {
+export async function suggestGpsLink(locationName: string, address: string) {
   const systemPrompt = `
 Você é um especialista em geolocalização. O usuário fornecerá um nome de local e, opcionalmente, um endereço.
 Sua tarefa é retornar um JSON com os campos:
@@ -597,8 +683,7 @@ Saída: { "searchQuery": "Arena DOM, Silva Jardim, RJ", "refinedName": "Arena DO
 `;
 
   try {
-    const { response } = await chatWithFailover({
-      preferredModel: model,
+    const { response } = await chatWithDomAi({
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: JSON.stringify({ name: locationName, address }) },
