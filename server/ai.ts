@@ -7,7 +7,115 @@ import { eq, like } from "drizzle-orm";
 const ollama = new Ollama({ host: ENV.ollamaUrl });
 
 // Default model priority: try each in order until one is available
-const DEFAULT_MODEL_PRIORITY = ["dom-ai", "llama3", "llama3.2:3b", "mistral", "gemma2"];
+const DEFAULT_MODEL_PRIORITY = ["dom-ai", "llama3.2:3b", "llama3", "mistral", "gemma2"];
+const DRAFT_TTL_MS = 30 * 60 * 1000;
+const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 12000);
+const OLLAMA_MAX_ATTEMPTS = Number(process.env.OLLAMA_MAX_ATTEMPTS || 2);
+
+type EventDraftData = {
+  eventName: string;
+  eventDate: string;
+  location: string;
+  address: string;
+  attraction: string;
+  stateCity: string;
+  localProducerName: string;
+  localProducerContact: string;
+};
+
+type PendingEventDraft = {
+  data: EventDraftData;
+  createdAt: number;
+  modelUsed: string;
+};
+
+const pendingEventDrafts = new Map<string, PendingEventDraft>();
+
+function normalizeIntentText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function isConfirmDraftIntent(text: string): boolean {
+  const normalized = normalizeIntentText(text);
+  const confirmTokens = [
+    "confirmar",
+    "confirmo",
+    "confirmar criacao",
+    "pode criar",
+    "criar agora",
+    "salvar evento",
+    "sim criar",
+  ];
+  return confirmTokens.some(token => normalized.includes(token));
+}
+
+function isCancelDraftIntent(text: string): boolean {
+  const normalized = normalizeIntentText(text);
+  const cancelTokens = [
+    "cancelar",
+    "descartar",
+    "nao criar",
+    "nao salvar",
+    "cancelar criacao",
+    "ignorar rascunho",
+  ];
+  return cancelTokens.some(token => normalized.includes(token));
+}
+
+function toEventDraft(data: Record<string, unknown>): EventDraftData {
+  const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+  return {
+    eventName: text(data.eventName),
+    eventDate: text(data.eventDate),
+    location: text(data.location),
+    address: text(data.address),
+    attraction: text(data.attraction),
+    stateCity: text(data.stateCity),
+    localProducerName: text(data.localProducerName),
+    localProducerContact: text(data.localProducerContact),
+  };
+}
+
+function formatDraftSummary(draft: EventDraftData): string {
+  const entries = [
+    ["Evento", draft.eventName || "-"],
+    ["Data", draft.eventDate || "-"],
+    ["Cidade/UF", draft.stateCity || "-"],
+    ["Local", draft.location || "-"],
+    ["Endereco", draft.address || "-"],
+    ["Atracao", draft.attraction || "-"],
+    ["Produtor local", draft.localProducerName || "-"],
+    ["Contato produtor", draft.localProducerContact || "-"],
+  ];
+
+  return entries.map(([label, value]) => `- ${label}: ${value}`).join("\n");
+}
+
+function unique(items: string[]): string[] {
+  return Array.from(new Set(items.filter(Boolean)));
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then(result => {
+        clearTimeout(timer);
+        resolve(result);
+      })
+      .catch(error => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
 
 export async function listOllamaModels(): Promise<string[]> {
   try {
@@ -23,31 +131,100 @@ export async function listOllamaModels(): Promise<string[]> {
   }
 }
 
-async function resolveModel(preferredModel?: string): Promise<string> {
+async function resolveModelCandidates(preferredModel?: string): Promise<string[]> {
   const available = await listOllamaModels();
 
   if (available.length === 0) {
-    throw new Error(
-      "Nenhum modelo Ollama disponível. Verifique se o serviço está rodando em: " + ENV.ollamaUrl
-    );
+    return unique([preferredModel || "", ...DEFAULT_MODEL_PRIORITY]);
   }
 
-  // If user picked a specific model and it's available, use it
-  if (preferredModel && available.includes(preferredModel)) {
-    return preferredModel;
+  const ordered: string[] = [];
+
+  if (preferredModel) {
+    const preferredMatch = available.find(m => m === preferredModel || m.startsWith(preferredModel));
+    if (preferredMatch) ordered.push(preferredMatch);
   }
 
-  // Otherwise pick by priority
   for (const candidate of DEFAULT_MODEL_PRIORITY) {
-    const match = available.find((m) => m.startsWith(candidate));
-    if (match) return match;
+    const match = available.find(m => m === candidate || m.startsWith(candidate));
+    if (match) ordered.push(match);
   }
 
-  // Fallback: first available
-  return available[0];
+  for (const modelName of available) {
+    if (!ordered.includes(modelName)) ordered.push(modelName);
+  }
+
+  return unique(ordered);
 }
 
-export async function processAiCommand(messages: { role: 'user' | 'assistant' | 'system', content: string }[], model?: string) {
+function extractDraftFromCreateIntent(text: string): EventDraftData | null {
+  const normalized = normalizeIntentText(text);
+  const looksLikeCreate = normalized.includes("crie") || normalized.includes("criar evento") || normalized.includes("novo evento");
+  if (!looksLikeCreate) return null;
+
+  const nameMatch = text.match(/(?:evento chamado|evento)\s+["']?([^"',\n]+?)["']?(?:\s+para|\s+em|\s+no|\s*$)/i);
+  const eventDateMatch = text.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+  const locationMatch = text.match(/(?:\s+em|\s+no|\s+na)\s+([A-Za-z0-9À-ÿ\s\-'.,]+)$/i);
+
+  const eventName = (nameMatch?.[1] || "").trim();
+  if (!eventName) return null;
+
+  return {
+    eventName,
+    eventDate: eventDateMatch?.[1] || "",
+    location: (locationMatch?.[1] || "").trim(),
+    address: "",
+    attraction: "",
+    stateCity: "",
+    localProducerName: "",
+    localProducerContact: "",
+  };
+}
+
+async function chatWithFailover(params: {
+  preferredModel?: string;
+  messages: { role: "user" | "assistant" | "system"; content: string }[];
+  format?: "json";
+  temperature?: number;
+  timeoutMs?: number;
+}) {
+  const candidates = await resolveModelCandidates(params.preferredModel);
+  if (candidates.length === 0) {
+    throw new Error("Nenhum modelo Ollama disponível.");
+  }
+
+  const errors: string[] = [];
+  for (const candidate of candidates.slice(0, Math.max(1, OLLAMA_MAX_ATTEMPTS))) {
+    try {
+      console.log(`[Ollama] Trying model: ${candidate}`);
+      const response = await withTimeout(
+        ollama.chat({
+          model: candidate,
+          messages: params.messages,
+          format: params.format,
+          options: {
+            temperature: params.temperature ?? 0.7,
+          },
+        }),
+        params.timeoutMs ?? OLLAMA_TIMEOUT_MS,
+        `ollama:${candidate}`
+      );
+      return { response, modelUsed: candidate };
+    } catch (error: any) {
+      const msg = error?.message || String(error);
+      errors.push(`${candidate}: ${msg}`);
+      console.warn(`[Ollama] Model failed: ${candidate}`, msg);
+    }
+  }
+
+  throw new Error(`Falha em todos os modelos Ollama. Detalhes: ${errors.join(" | ")}`);
+}
+
+export async function processAiCommand(
+  messages: { role: "user" | "assistant" | "system"; content: string }[],
+  model?: string,
+  requesterOpenId?: string
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
 
@@ -55,9 +232,73 @@ export async function processAiCommand(messages: { role: 'user' | 'assistant' | 
     .select({ id: fichasTecnicas.id, name: fichasTecnicas.eventName })
     .from(fichasTecnicas);
   const eventNamesList = events.map((e) => e.name).join(", ");
+  const draftKey = requesterOpenId || "anonymous";
+  const latestUserMessage = [...messages].reverse().find(message => message.role === "user")?.content?.trim() || "";
+  const currentDraft = pendingEventDrafts.get(draftKey);
 
-  const resolvedModel = await resolveModel(model);
-  console.log(`[Ollama] Using model: ${resolvedModel}`);
+  if (currentDraft && Date.now() - currentDraft.createdAt > DRAFT_TTL_MS) {
+    pendingEventDrafts.delete(draftKey);
+  }
+
+  const activeDraft = pendingEventDrafts.get(draftKey);
+  if (activeDraft && latestUserMessage) {
+    if (isConfirmDraftIntent(latestUserMessage)) {
+      const { createFicha } = await import("./db");
+      const draftData = activeDraft.data;
+      const fichaId = await createFicha({
+        eventName: draftData.eventName || "Novo Evento",
+        eventDate: draftData.eventDate || "",
+        attraction: draftData.attraction || "",
+        stateCity: draftData.stateCity || "",
+        location: draftData.location || "",
+        address: draftData.address || "",
+        gpsLink: draftData.location
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              `${draftData.location} ${draftData.stateCity}`.trim()
+            )}`
+          : "",
+        localProducerName: draftData.localProducerName || "",
+        localProducerContact: draftData.localProducerContact || "",
+        status: "draft",
+        createdByOpenId: requesterOpenId || "system",
+      });
+      pendingEventDrafts.delete(draftKey);
+      return {
+        success: true,
+        message: `✅ Evento "${draftData.eventName || "Novo Evento"}" criado com sucesso (ID ${fichaId}). Posso continuar e montar cronograma, equipe e logistica para voce.`,
+        modelUsed: activeDraft.modelUsed,
+        actionTaken: "create_event",
+      };
+    }
+
+    if (isCancelDraftIntent(latestUserMessage)) {
+      pendingEventDrafts.delete(draftKey);
+      return {
+        success: true,
+        message: "Rascunho de evento cancelado. Quando quiser, eu preparo um novo.",
+        modelUsed: activeDraft.modelUsed,
+        actionTaken: "chat",
+      };
+    }
+  }
+
+  const immediateDraft = latestUserMessage ? extractDraftFromCreateIntent(latestUserMessage) : null;
+  if (immediateDraft) {
+    pendingEventDrafts.set(draftKey, {
+      data: immediateDraft,
+      createdAt: Date.now(),
+      modelUsed: "heuristic-immediate",
+    });
+    return {
+      success: true,
+      message:
+        `Montei um rascunho inicial direto do seu pedido.\n\n` +
+        `${formatDraftSummary(immediateDraft)}\n\n` +
+        `Se estiver tudo certo, responda "confirmar criacao". Para abortar, responda "cancelar criacao".`,
+      modelUsed: "heuristic-immediate",
+      actionTaken: "chat",
+    };
+  }
 
   const systemPrompt = `
 Você é o DOM AI, o assistente virtual inteligente da DOM Produções. 
@@ -73,9 +314,11 @@ Regras:
 2. Se o usuário pedir para realizar uma ação (adicionar profissional, mudar status, etc), identifique o evento e a ação.
 3. Se o usuário estiver apenas conversando ou fazendo uma pergunta, use a ação "chat".
 4. No campo "response", coloque a mensagem que eu (o bot) devo falar para o usuário. Mesmo se fizer uma ação, explique o que fez de forma amigável.
+5. IMPORTANTE: criação de evento agora é em duas etapas. Primeiro você gera um rascunho com ação "draft_event". Nunca confirme que o evento já foi criado.
 
 Ações possíveis:
-- "create_event": { "eventName": "...", "eventDate": "...", "location": "...", "address": "...", "attraction": "...", "localProducerName": "...", "localProducerContact": "..." }
+- "draft_event": { "eventName": "...", "eventDate": "...", "stateCity": "...", "location": "...", "address": "...", "attraction": "...", "localProducerName": "...", "localProducerContact": "..." }
+- "create_event": { "eventName": "...", "eventDate": "...", "stateCity": "...", "location": "...", "address": "...", "attraction": "...", "localProducerName": "...", "localProducerContact": "..." } (retrocompatibilidade; trate como rascunho)
 - "add_professional": { "eventName": "...", "professionalName": "...", "professionalRole": "...", "professionalContact": "..." }
 - "add_hotel": { "eventName": "...", "hotelName": "...", "hotelAddress": "...", "hotelContact": "..." }
 - "add_logistics": { "eventName": "...", "logisticsRole": "...", "logisticsName": "...", "logisticsContact": "..." }
@@ -86,23 +329,19 @@ Ações possíveis:
 
 Formato de resposta esperado:
 {
-  "action": "create_event" | "add_professional" | "add_hotel" | "add_logistics" | "update_ficha_status" | "add_schedule_item" | "update_event_info" | "chat",
+  "action": "draft_event" | "create_event" | "add_professional" | "add_hotel" | "add_logistics" | "update_ficha_status" | "add_schedule_item" | "update_event_info" | "chat",
   "data": { ... },
   "response": "Sua mensagem amigável aqui explicando o que fez ou respondendo à pergunta."
 }
 `;
 
   try {
-    const response = await ollama.chat({
-      model: resolvedModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages,
-      ],
+    const { response, modelUsed } = await chatWithFailover({
+      preferredModel: model,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
       format: "json",
-      options: {
-        temperature: 0.7,
-      },
+      temperature: 0.7,
+      timeoutMs: OLLAMA_TIMEOUT_MS,
     });
 
     let raw = response.message.content.trim();
@@ -113,23 +352,23 @@ Formato de resposta esperado:
       return { 
         success: true, 
         message: result.response || result.data?.text || "Olá! Como posso ajudar?", 
-        modelUsed: resolvedModel,
+        modelUsed,
         actionTaken: "chat"
       };
     }
 
-    if (!result.action || !result.data || !result.data.eventName) {
-      return { success: false, message: result.response || "Comando incompleto ou evento não especificado.", raw: result };
-    }
+	    if (!result.action || !result.data || (result.action !== "chat" && !result.data.eventName)) {
+	      return { success: false, message: result.response || "Comando incompleto ou evento não especificado.", raw: result };
+	    }
 
-    const { eventName } = result.data;
-    let eventId = 0;
-    let actualEventName = eventName;
+	    const { eventName } = result.data;
+	    let eventId = 0;
+	    let actualEventName = eventName;
 
-    if (result.action !== "create_event") {
-      const targetEvents = await db
-        .select()
-        .from(fichasTecnicas)
+	    if (!["create_event", "draft_event"].includes(result.action)) {
+	      const targetEvents = await db
+	        .select()
+	        .from(fichasTecnicas)
         .where(like(fichasTecnicas.eventName, `%${eventName}%`));
 
       if (targetEvents.length === 0) {
@@ -140,28 +379,33 @@ Formato de resposta esperado:
       actualEventName = targetEvents[0].eventName;
     }
 
-    // 2. Execute the action
-    switch (result.action) {
-      case "create_event": {
-        const { createFicha } = await import("./db");
-        const { eventDate, location, address, attraction, localProducerName, localProducerContact } = result.data;
-        eventId = await createFicha({
-          eventName: eventName,
-          eventDate: eventDate || "",
-          location: location || "",
-          address: address || "",
-          attraction: attraction || "",
-          localProducerName: localProducerName || "",
-          localProducerContact: localProducerContact || "",
-          status: "draft",
-          createdByOpenId: "system", // Will default if handled by AI, but preferably we grab the user
-        });
-        return {
-          success: true,
-          message: result.response || `✅ Evento "${eventName}" criado com sucesso! Agora você pode adicionar profissionais, hotéis e itens no cronograma.`,
-          modelUsed: resolvedModel,
-        };
-      }
+	    // 2. Execute the action
+	    switch (result.action) {
+	      case "draft_event":
+	      case "create_event": {
+	        const draft = toEventDraft(result.data as Record<string, unknown>);
+	        if (!draft.eventName) {
+	          return {
+	            success: false,
+	            message: "Preciso pelo menos do nome do evento para montar o rascunho.",
+	            modelUsed,
+	          };
+	        }
+	        pendingEventDrafts.set(draftKey, {
+	          data: draft,
+	          createdAt: Date.now(),
+	          modelUsed,
+	        });
+	        return {
+	          success: true,
+	          message:
+	            `${result.response || "Preparei um rascunho do evento."}\n\n` +
+	            `${formatDraftSummary(draft)}\n\n` +
+	            `Se estiver tudo certo, responda "confirmar criacao". Para abortar, responda "cancelar criacao".`,
+	          modelUsed,
+	          actionTaken: "chat",
+	        };
+	      }
       case "add_professional": {
         const { professionalName, professionalRole, professionalContact } = result.data;
         await db.insert(professionals).values({
@@ -173,7 +417,7 @@ Formato de resposta esperado:
         return {
           success: true,
           message: result.response || `✅ Profissional ${professionalName} adicionado como ${professionalRole || "Staff"} no evento ${actualEventName}.`,
-          modelUsed: resolvedModel,
+          modelUsed,
         };
       }
 
@@ -185,7 +429,7 @@ Formato de resposta esperado:
         return {
           success: true,
           message: result.response || `✅ Status do evento ${actualEventName} alterado para ${validStatus === "published" ? "Publicado" : "Rascunho"}.`,
-          modelUsed: resolvedModel,
+          modelUsed,
         };
       }
 
@@ -201,7 +445,7 @@ Formato de resposta esperado:
         return {
           success: true,
           message: result.response || `✅ Hospedagem "${hotelName}" adicionada ao evento ${actualEventName}.`,
-          modelUsed: resolvedModel,
+          modelUsed,
         };
       }
 
@@ -217,7 +461,7 @@ Formato de resposta esperado:
         return {
           success: true,
           message: result.response || `✅ Item de logística "${logisticsRole} - ${logisticsName}" adicionado ao evento ${actualEventName}.`,
-          modelUsed: resolvedModel,
+          modelUsed,
         };
       }
 
@@ -233,7 +477,7 @@ Formato de resposta esperado:
         return {
           success: true,
           message: result.response || `✅ Item de cronograma ("${activity}") adicionado ao evento ${actualEventName}.`,
-          modelUsed: resolvedModel,
+          modelUsed,
         };
       }
 
@@ -247,7 +491,7 @@ Formato de resposta esperado:
           return {
             success: true,
             message: result.response || `✅ Informação "${field}" do evento ${actualEventName} atualizada para "${value}".`,
-            modelUsed: resolvedModel,
+            modelUsed,
           };
         }
         throw new Error(`Campo "${field}" não suportado para atualização.`);
@@ -258,13 +502,28 @@ Formato de resposta esperado:
     }
   } catch (error: any) {
     console.error("[Ollama Error]", error);
+    const heuristicDraft = latestUserMessage ? extractDraftFromCreateIntent(latestUserMessage) : null;
+    if (heuristicDraft) {
+      pendingEventDrafts.set(draftKey, {
+        data: heuristicDraft,
+        createdAt: Date.now(),
+        modelUsed: "heuristic-fallback",
+      });
+      return {
+        success: true,
+        message:
+          `O Ollama demorou ou falhou, mas montei um rascunho inicial a partir do seu texto.\n\n` +
+          `${formatDraftSummary(heuristicDraft)}\n\n` +
+          `Se estiver tudo certo, responda "confirmar criacao". Para abortar, responda "cancelar criacao".`,
+        modelUsed: "heuristic-fallback",
+        actionTaken: "chat",
+      };
+    }
     throw new Error("Erro ao processar comando de IA: " + error.message);
   }
 }
 
 export async function parseFichaTextWithAi(text: string, model?: string) {
-  const resolvedModel = await resolveModel(model);
-  
   const systemPrompt = `
 Você é o DOM AI, especialista sênior em extração de dados logísticos para eventos.
 Sua tarefa é ler mensagens de WhatsApp, checklists e e-mails e extrair informações para uma ficha técnica.
@@ -304,14 +563,15 @@ REGRAS CRÍTICAS:
 `;
 
   try {
-    const response = await ollama.chat({
-      model: resolvedModel,
+    const { response } = await chatWithFailover({
+      preferredModel: model,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: text }
+        { role: "user", content: text },
       ],
       format: "json",
-      options: { temperature: 0.1 },
+      temperature: 0.1,
+      timeoutMs: OLLAMA_TIMEOUT_MS,
     });
 
     let raw = response.message.content.trim();
@@ -323,8 +583,6 @@ REGRAS CRÍTICAS:
 }
 
 export async function suggestGpsLink(locationName: string, address: string, model?: string) {
-  const resolvedModel = await resolveModel(model);
-  
   const systemPrompt = `
 Você é um especialista em geolocalização. O usuário fornecerá um nome de local e, opcionalmente, um endereço.
 Sua tarefa é retornar um JSON com os campos:
@@ -339,14 +597,15 @@ Saída: { "searchQuery": "Arena DOM, Silva Jardim, RJ", "refinedName": "Arena DO
 `;
 
   try {
-    const response = await ollama.chat({
-      model: resolvedModel,
+    const { response } = await chatWithFailover({
+      preferredModel: model,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: JSON.stringify({ name: locationName, address }) }
+        { role: "user", content: JSON.stringify({ name: locationName, address }) },
       ],
       format: "json",
-      options: { temperature: 0.1 },
+      temperature: 0.1,
+      timeoutMs: OLLAMA_TIMEOUT_MS,
     });
 
     let raw = response.message.content.trim();

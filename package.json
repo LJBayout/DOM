@@ -10,7 +10,10 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate"
+    "db:push": "pnpm dlx drizzle-kit@0.31.5 push:mysql",
+    "seed:internet": "tsx scripts/seed_internet_events.ts",
+    "ai:model:build": "docker compose exec ollama ollama create dom-ai -f /app/Modelfile",
+    "ai:model:list": "docker compose exec ollama ollama list"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.907.0",

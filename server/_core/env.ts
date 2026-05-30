@@ -11,4 +11,6 @@ export const ENV = {
   s3Bucket: process.env.S3_BUCKET ?? "fichas-tecnicas",
   redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
   ollamaUrl: process.env.OLLAMA_URL ?? "http://host.docker.internal:11434", // Using host.docker.internal assuming Ollama runs on host
+  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
+  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
 };

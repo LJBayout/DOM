@@ -20,7 +20,7 @@ function formatDate(dateStr: string) {
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const [, navigate] = useLocation();
-  const [ridersModal, setRidersModal] = useState<{ open: boolean; eventName: string; pdfs: any[] }>({
+  const [ridersModal, setRidersModal] = useState<{ open: boolean; eventName: string; pdfs: any[]; id: number }>({
     open: false,
     eventName: "",
     pdfs: [],

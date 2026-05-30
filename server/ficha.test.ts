@@ -3,6 +3,26 @@ import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
 // ─── Mock DB ─────────────────────────────────────────────────────────────────
+vi.mock("./redis", () => ({
+  saveSuggestions: vi.fn().mockResolvedValue(undefined),
+  syncSuggestionsFromFichasToRedis: vi.fn().mockResolvedValue(undefined),
+  getSuggestionsFromRedis: vi.fn().mockResolvedValue({
+    eventNames: [],
+    attractions: [],
+    stateCities: [],
+    locations: [],
+    addresses: [],
+    localProducerNames: [],
+    localProducerContacts: [],
+    hotels: { names: [], addresses: [], contacts: [], contactPersons: [], localContacts: [] },
+    logisticsRoles: [],
+    logisticsNames: [],
+    logisticsContacts: [],
+    professionalsNames: [],
+    professionalsRoles: [],
+    professionalsContacts: [],
+  }),
+}));
 
 vi.mock("./db", () => ({
   listFichas: vi.fn().mockResolvedValue([
@@ -20,10 +40,14 @@ vi.mock("./db", () => ({
     { id: 2, fichaId: 1, time: "14:00", activity: "Passagem de Som", sortOrder: 1 },
   ]),
   getProfessionalsByFichaId: vi.fn().mockResolvedValue([
-    { id: 1, fichaId: 1, name: "João Silva", role: "Diretor", sortOrder: 0 },
+    { id: 1, fichaId: 1, name: "João Silva", role: "Diretor", contact: "11999990000", sortOrder: 0 },
   ]),
+  getHotelsByFichaId: vi.fn().mockResolvedValue([]),
+  getLogisticsByFichaId: vi.fn().mockResolvedValue([]),
   replaceScheduleItems: vi.fn().mockResolvedValue(undefined),
   replaceProfessionals: vi.fn().mockResolvedValue(undefined),
+  replaceHotels: vi.fn().mockResolvedValue(undefined),
+  replaceLogistics: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ─── Context Factories ────────────────────────────────────────────────────────
@@ -106,9 +130,9 @@ describe("ficha.create (admin only)", () => {
       { time: "22:00", activity: "Término" },
     ],
     professionals: [
-      { name: "Maria Santos", role: "Diretora" },
-      { name: "Carlos Lima", role: "Produtor" },
-      { name: "Ana Costa", role: "Técnico de Som" },
+      { name: "Maria Santos", role: "Diretora", contact: "11911111111" },
+      { name: "Carlos Lima", role: "Produtor", contact: "11922222222" },
+      { name: "Ana Costa", role: "Técnico de Som", contact: "11933333333" },
     ],
   };
 
@@ -140,7 +164,7 @@ describe("ficha.update (admin only)", () => {
         location: "Curitiba",
         status: "published",
         scheduleItems: [{ time: "10:00", activity: "Início" }],
-        professionals: [{ name: "João", role: "Diretor" }],
+        professionals: [{ name: "João", role: "Diretor", contact: "11944444444" }],
       },
     });
     expect(result.success).toBe(true);

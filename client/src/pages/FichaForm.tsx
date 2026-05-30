@@ -151,15 +151,24 @@ export default function FichaForm() {
         })));
       } else {
         // Fallback for old data structure if still present in DB fields
-        if (fichaData.hotelName) {
+        const legacyFicha = fichaData as typeof fichaData & {
+          hotelName?: string;
+          hotelAddress?: string | null;
+          hotelContact?: string | null;
+          hotelContactPerson?: string | null;
+          hotelLocalContact?: string | null;
+          hotelGpsLink?: string | null;
+          hotelRoomListPdfs?: string | null;
+        };
+        if (legacyFicha.hotelName) {
           setHotels([{
-            name: fichaData.hotelName,
-            address: fichaData.hotelAddress || "",
-            contact: fichaData.hotelContact || "",
-            contactPerson: fichaData.hotelContactPerson || "",
-            localContact: fichaData.hotelLocalContact || "",
-            gpsLink: fichaData.hotelGpsLink || "",
-            roomListPdfs: fichaData.hotelRoomListPdfs || null,
+            name: legacyFicha.hotelName,
+            address: legacyFicha.hotelAddress || "",
+            contact: legacyFicha.hotelContact || "",
+            contactPerson: legacyFicha.hotelContactPerson || "",
+            localContact: legacyFicha.hotelLocalContact || "",
+            gpsLink: legacyFicha.hotelGpsLink || "",
+            roomListPdfs: legacyFicha.hotelRoomListPdfs || null,
           }]);
         } else {
           setHotels([{ ...DEFAULT_HOTEL }]);
@@ -849,7 +858,9 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
             <h2 style={{ fontFamily: "var(--font-serif)", color: "white", fontSize: "1.5rem", marginBottom: "0.5rem", fontWeight: 800 }}>Localização GPS (IA)</h2>
             <p style={{ fontFamily: "var(--font-sans)", color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", marginBottom: "2rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Refine o local para a busca do Google Maps</p>
             
-            <FieldLabel style={{ color: "var(--gold)" }}>Nome do Local ou Endereço</FieldLabel>
+            <div style={{ color: "var(--gold)" }}>
+              <FieldLabel>Nome do Local ou Endereço</FieldLabel>
+            </div>
             <input 
               autoFocus
               type="text" 

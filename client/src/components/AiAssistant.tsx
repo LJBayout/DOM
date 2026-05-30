@@ -345,7 +345,7 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
                         fontSize: "0.9rem"
                       }}
                     />
-                    <button
+                    <motion.button
                       type="submit"
                       disabled={processCommand.isPending || !input.trim()}
                       style={{
@@ -365,7 +365,7 @@ export function AiAssistant({ inline = false }: { inline?: boolean }) {
                       whileTap={{ scale: 0.95 }}
                     >
                       <Send size={18} />
-                    </button>
+                    </motion.button>
                   </form>
                   
                   {modelsQuery.data && modelsQuery.data.length > 0 && (

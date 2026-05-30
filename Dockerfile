@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 
-# Install dependencies with verbose output to avoid "hanging" feel
+# Install dependencies with the checked-in lockfile for deterministic builds
 RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the application
@@ -20,5 +20,3 @@ EXPOSE 3000
 
 # Start development server
 CMD ["pnpm", "run", "dev"]
-
-

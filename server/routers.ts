@@ -188,9 +188,9 @@ const fichaRouter = router({
       })), 
       model: z.string().optional() 
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { processAiCommand } = await import("./ai");
-      return await processAiCommand(input.messages, input.model);
+      return await processAiCommand(input.messages, input.model, ctx.user.openId);
     }),
 
   listModels: adminProcedure.query(async () => {

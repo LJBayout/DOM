@@ -84,3 +84,16 @@ export async function getPresignedDownloadUrl(key: string) {
 
   return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 }
+
+export async function storagePut(key: string, body: Buffer | Uint8Array | string, contentType = "application/octet-stream") {
+  await ensureBucket();
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: ENV.s3Bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    })
+  );
+  return { key, url: `/api/storage/${key}` };
+}
