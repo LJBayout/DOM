@@ -481,7 +481,6 @@ export default function Dashboard() {
         steps={tourSteps}
         open={tourOpen}
         onOpenChange={setTourOpen}
-        autoStartKey="dom-dashboard-tour-v1"
       />
       <AiAssistant onOpenGuide={openGuide} />
       {deleteDialog.open && (

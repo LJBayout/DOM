@@ -137,7 +137,7 @@ export function TourGuide({ steps, open, onOpenChange, autoStartKey }: TourGuide
   }
 
   return (
-    <div aria-live="polite">
+    <div aria-live="polite" style={{ pointerEvents: "none" }}>
       <div
         aria-hidden="true"
         style={{
@@ -146,6 +146,7 @@ export function TourGuide({ steps, open, onOpenChange, autoStartKey }: TourGuide
           zIndex: 500,
           background: "rgba(0, 0, 0, 0.66)",
           backdropFilter: "blur(2px)",
+          pointerEvents: "none",
         }}
       />
 
@@ -182,6 +183,7 @@ export function TourGuide({ steps, open, onOpenChange, autoStartKey }: TourGuide
           borderRadius: "var(--radius)",
           boxShadow: "0 22px 60px rgba(0,0,0,0.45)",
           overflow: "hidden",
+          pointerEvents: "auto",
         }}
       >
         <div style={{ padding: "1rem 1.1rem", borderBottom: "1px solid var(--border)", background: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
